@@ -22,3 +22,10 @@
 Homestead.json
 Homestead.yaml
 Thumbs.db
+# База даних SQLite (якщо колись будете тестувати локально)
+/database/*.sqlite
+/database/*.sqlite-journal
+
+# Щоб випадково не залити ваші згенеровані CSV експорти на GitHub
+/storage/app/private/filament_exports/*
+!/storage/app/private/filament_exports/.gitignore
