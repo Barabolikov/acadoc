@@ -20,4 +20,6 @@ Route::get('/login', function () {
 // Всі маршрути всередині цієї групи вимагатимуть авторизації
 Route::middleware(['auth'])->group(function () {
     Route::get('/norm-control', [NormControlController::class, 'index'])->name('norm-control.index');
+    Route::post('/norm-control/process', [NormControlController::class, 'process'])->name('norm-control.process');
+    Route::post('/norm-control/download', [NormControlController::class, 'downloadPdf'])->name('norm-control.download');
 });

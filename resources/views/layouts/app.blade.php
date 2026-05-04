@@ -11,7 +11,7 @@
 <body class="bg-gray-50 text-gray-800 font-sans antialiased selection:bg-indigo-500 selection:text-white">
 <!-- Змінна isLoginOpen зберігає стан вікна: відкрите/закрите -->
 <!-- Якщо є помилки вводу, вікно автоматично залишиться відкритим після перезавантаження -->
-<div class="min-h-screen flex flex-col" x-data="{ isLoginOpen: {{ $errors->any() ? 'true' : 'false' }} }">
+<div class="min-h-screen flex flex-col" x-data="{ isLoginOpen: {{ $errors->has('email') ? 'true' : 'false' }} }">
 
     <!-- Шапка (Header) -->
     <header class="bg-white shadow-sm border-b border-gray-100 sticky top-0 z-50">
