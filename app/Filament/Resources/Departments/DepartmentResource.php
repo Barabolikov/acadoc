@@ -19,6 +19,7 @@ use Filament\Tables\Table;
 class DepartmentResource extends Resource
 {
     protected static ?string $model = Department::class;
+    protected static string|BackedEnum|null $navigationIcon = Heroicon::Newspaper;
     public static function getModelLabel(): string
     {
         return __('models.department');
@@ -28,8 +29,6 @@ class DepartmentResource extends Resource
     {
         return __('models.departments');
     }
-
-    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
 
     protected static ?string $recordTitleAttribute = 'name';
 
