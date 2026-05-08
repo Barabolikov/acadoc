@@ -15,10 +15,10 @@ class UsersTable
         return $table
             ->columns([
                 TextColumn::make('name')
-                    ->label(__('models.name')) // <--- Додано переклад
+                    ->label(__('models.name'))
                     ->searchable(),
                 TextColumn::make('email')
-                    ->label(__('models.email')) // <--- Додано переклад
+                    ->label(__('models.email'))
                     ->label('Email address')
                     ->searchable(),
 
@@ -37,7 +37,7 @@ class UsersTable
                     ->sortable()
                     ->searchable(),
                 TextColumn::make('group.name')
-                    ->label(__('models.group_id'))
+                    ->label('Група')
                     ->sortable()
                     ->searchable(),
             ])
