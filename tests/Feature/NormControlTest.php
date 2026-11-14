@@ -5,6 +5,8 @@ namespace Tests\Feature;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Carbon;
+use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 use ZipArchive;
 
@@ -407,17 +409,37 @@ class NormControlTest extends TestCase
         $this->assertSame(['checked' => 1, 'ok' => 1, 'percent' => 100], $report['metrics']['body']);
     }
 
-    public function test_pdf_report_is_built_from_session(): void
+    public function test_docx_report_is_built_from_session(): void
     {
-        $this->check($this->document([$this->p(self::BODY)]));
+        // Текст із символами, які треба екранувати в XML звіту
+        $this->check($this->document([$this->p('Порівняння A &amp; B: значення &lt;x&gt; має бути «коректним» у тексті', '<w:jc w:val="left"/>')]));
 
         $response = $this->post(route('norm-control.download'));
+        $response->assertOk()->assertHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
+        $this->assertStringContainsString('.docx', $response->headers->get('Content-Disposition'));
 
-        $response->assertOk()->assertHeader('Content-Type', 'application/pdf');
-        $this->assertStringStartsWith('%PDF', $response->getContent());
+        $path = tempnam(sys_get_temp_dir(), 'report');
+        file_put_contents($path, $response->streamedContent());
+        $zip = new ZipArchive;
+        $this->assertTrue($zip->open($path));
+
+        // Усі частини — коректний XML
+        foreach (['[Content_Types].xml', '_rels/.rels', 'word/_rels/document.xml.rels', 'word/document.xml', 'word/styles.xml', 'word/settings.xml', 'word/footer1.xml', 'docProps/core.xml'] as $part) {
+            $xml = $zip->getFromName($part);
+            $this->assertNotFalse($xml, "Немає частини $part");
+            $this->assertTrue((new \DOMDocument)->loadXML($xml), "Некоректний XML у $part");
+        }
+
+        $text = html_entity_decode(strip_tags(str_replace('</w:p>', "\n", $zip->getFromName('word/document.xml'))));
+        foreach (['Звіт нормоконтролю роботи', '1. Робота', '2. Показники', '3. Зауваження', '4. Рішення нормоконтролера',
+            'Вирівнювання по лівому краю (треба по ширині)', 'Порівняння A & B: значення <x>', 'Підпис нормоконтролера та дата'] as $expected) {
+            $this->assertStringContainsString($expected, $text);
+        }
+        $this->assertStringContainsString('NUMPAGES', $zip->getFromName('word/footer1.xml'));
+        $zip->close();
     }
 
-    public function test_pdf_report_without_check_redirects(): void
+    public function test_report_without_check_redirects(): void
     {
         $this->actingAs(User::factory()->create())
             ->post(route('norm-control.download'))
@@ -425,13 +447,319 @@ class NormControlTest extends TestCase
             ->assertSessionHasErrors('document');
     }
 
-    public function test_pdf_report_view_renders_sections(): void
+    public function test_results_page_has_report_note_and_docx_button(): void
     {
-        $this->check($this->document([$this->p(self::BODY, '<w:jc w:val="left"/>')]));
-        $html = view('norm-control.pdf_report', ['report' => session('norm_control_report')])->render();
+        $this->check($this->document([$this->p(self::BODY)]))
+            ->assertSee('Отриманий файл звіту слід надіслати керівнику проєкту.')
+            ->assertSee('Завантажити звіт (.docx)')
+            ->assertDontSee('Наразі це базова перевірка');
+    }
 
-        foreach (['Звіт нормоконтролю роботи', '1. Робота', '2. Показники', '3. Зауваження', '4. Рішення нормоконтролера', 'Основний текст', 'Вирівнювання по лівому краю (треба по ширині)', 'Підпис нормоконтролера та дата'] as $text) {
-            $this->assertStringContainsString($text, $html);
+    // --- Підписи рисунків і таблиць, посилання на них ---
+
+    private function figure(): string
+    {
+        return '<w:p><w:r><w:drawing><wp:inline xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing"/></w:drawing></w:r></w:p>';
+    }
+
+    private function tableXml(): string
+    {
+        return '<w:tbl><w:tblPr/><w:tr><w:tc>'.$this->p('Модуль обліку').'</w:tc></w:tr></w:tbl>';
+    }
+
+    public function test_correct_captions_and_references_pass(): void
+    {
+        $response = $this->check($this->document([
+            $this->p('Загальну схему системи показано на рисунку 1.1, а модулі наведено в таблиці 1.1.'),
+            $this->figure(),
+            $this->p('Рисунок 1.1 – Схема системи', '<w:jc w:val="center"/>'),
+            $this->p('Таблиця 1.1 – Перелік модулів'),
+            $this->tableXml(),
+            // Речення, що починається словом «Таблиця», — не підпис, а посилання
+            $this->p('Таблиця 1.1 містить перелік модулів, що розробляються в межах роботи.'),
+        ]));
+
+        $this->assertSame([], $this->errorsOfType($response, 'Оформлення (Підписи)'));
+        $this->assertSame([], $this->errorsOfType($response, 'Посилання на рисунки й таблиці'));
+    }
+
+    public function test_caption_format_errors(): void
+    {
+        $response = $this->check($this->document([
+            $this->p('Див. рис. 1.2.1 та табл. 1.1.'),
+            $this->figure(),
+            $this->p('Рис. 1.2.1. Схема системи.'),
+            $this->tableXml(),
+            $this->p('Таблиця 1.1 - Модулі'),
+        ]));
+
+        $this->assertSame([
+            'Пишіть «Рисунок» повністю; номер складається з номера розділу й порядкового номера (напр. 1.2), а не 1.2.1; після номера крапку не ставлять; між номером і назвою потрібне тире: «Рисунок 1.2 – Назва»; у кінці назви крапку не ставлять',
+            'Між номером і назвою ставлять тире «–», а не дефіс; назву таблиці розміщують над таблицею',
+        ], array_slice($this->errorsOfType($response, 'Оформлення (Підписи)'), 0, 2));
+    }
+
+    public function test_caption_numbering_and_missing_references(): void
+    {
+        $response = $this->check($this->document([
+            $this->p('Інтерфейс показано на рис. 1.1 і рис. 1.5, а головне вікно описано нижче.'),
+            $this->figure(), $this->p('Рисунок 1.1 – Вікно входу'),
+            $this->figure(), $this->p('Рисунок 1.1 – Головне вікно'),
+            $this->figure(), $this->p('Рисунок 1.3 – Налаштування'),
+        ]));
+
+        $this->assertSame([
+            'Номери рисунків повторюються: 1.1',
+            'У нумерації рисунків пропущено: 1.2',
+        ], $this->errorsOfType($response, 'Оформлення (Підписи)'));
+        $this->assertSame([
+            'Немає посилань у тексті на рисунки: 1.3',
+            'Посилання на рисунки, яких немає в роботі: 1.5',
+        ], $this->errorsOfType($response, 'Посилання на рисунки й таблиці'));
+    }
+
+    // --- Додатки ---
+
+    private function appendix(string $heading, ?string $title = 'Лістинг програми'): array
+    {
+        return array_filter([$this->pageBreak(), $this->p($heading, '<w:jc w:val="center"/>'), $title ? $this->p($title, '<w:jc w:val="center"/>') : null]);
+    }
+
+    public function test_correct_appendices_pass(): void
+    {
+        $response = $this->check($this->document([
+            $this->p('Код програми наведено в додатку А, а результати тестів — у додатках Б–В.'),
+            ...$this->appendix('ДОДАТОК А'),
+            ...$this->appendix('ДОДАТОК Б'),
+            ...$this->appendix('ДОДАТОК В. Результати тестування', null),
+        ]));
+
+        $this->assertSame([], $this->errorsOfType($response, 'Додатки'));
+    }
+
+    public function test_appendix_errors(): void
+    {
+        $response = $this->check($this->document([
+            $this->p('Код програми наведено в додатку А.'),
+            ...$this->appendix('ДОДАТОК А'),
+            ...$this->appendix('ДОДАТОК 2'),
+            ...$this->appendix('ДОДАТОК З'),
+            ...$this->appendix('ДОДАТОК Е', null),
+        ]));
+
+        $this->assertSame([
+            'Додатки позначають великими літерами (А, Б, В…), а не цифрами',
+            'Літеру «З» для позначення додатків не використовують (не можна: Ґ, Є, З, І, Ї, Й, О, Ч, Ь)',
+            'Порушено послідовність: очікується «ДОДАТОК Г», а не «ДОДАТОК Е»',
+            'Додаток не має назви (наступний рядок після «ДОДАТОК …»)',
+            'Немає посилань у тексті на додатки 2, З, Е',
+        ], $this->errorsOfType($response, 'Додатки'));
+    }
+
+    // --- Формули ---
+
+    private function formula(string $math, string $number = ''): string
+    {
+        $num = $number !== '' ? '<w:r><w:tab/><w:t>'.$number.'</w:t></w:r>' : '';
+
+        return '<w:p><m:oMath xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><m:r><m:t>'.$math.'</m:t></m:r></m:oMath>'.$num.'</w:p>';
+    }
+
+    public function test_correct_formulas_pass(): void
+    {
+        $response = $this->check($this->document([
+            $this->p('Енергію обчислюють за формулою (2.1), а потужність — згідно з (2.2).'),
+            $this->formula('E=m·c²', '(2.1)'),
+            $this->formula('P=A/t', '(2.2)'),
+            // Формула всередині речення — не винесена, номер не потрібен
+            '<w:p><w:r><w:t>Тут x = </w:t></w:r><m:oMath xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><m:r><m:t>a+b</m:t></m:r></m:oMath><w:r><w:t> — сума двох доданків у рядку тексту.</w:t></w:r></w:p>',
+        ]));
+
+        $this->assertSame([], $this->errorsOfType($response, 'Формули'));
+    }
+
+    public function test_formula_errors(): void
+    {
+        $response = $this->check($this->document([
+            $this->p('Розрахунок виконано за формулою (2.1).'),
+            $this->formula('E=m·c²', '(2.1)'),
+            $this->formula('P=A/t', '2.2'),
+            $this->formula('F=m·a'),
+        ]));
+
+        $this->assertSame([
+            'Номер формули беруть у круглі дужки: (2.2)',
+            'Формули без номера: 1 з 3',
+            'Немає посилань у тексті на формули: (2.2)',
+        ], $this->errorsOfType($response, 'Формули'));
+    }
+
+    // --- Оформлення списку джерел (ДСТУ 8302:2015) ---
+
+    public function test_reference_entries_format(): void
+    {
+        $response = $this->check($this->document([
+            $this->p('Огляд підходів наведено в [1–6].'),
+            $this->pageBreak(),
+            $this->p('СПИСОК ВИКОРИСТАНИХ ДЖЕРЕЛ', '<w:jc w:val="center"/>'),
+            $this->p('Шелдон Р. SQL. Базовий курс. Київ : Діалектика, 2019. 1024 с.'),
+            $this->p('Android Developers. Guide to app architecture. URL: https://developer.android.com/topic/architecture (дата звернення: 06.04.2026).'),
+            $this->p('https://laravel.com/docs'),
+            $this->p('Laravel documentation. https://laravel.com/docs/12.x'),
+            $this->p('Іваненко І. І. Основи програмування. Київ : Освіта. 300 с.'),
+            $this->p('Петренко П. П. Бази даних. Львів : Світ, 2018'),
+        ]));
+
+        $this->assertSame([
+            'Запис складається лише з посилання: №3',
+            'Перед електронною адресою немає «URL:»: №4',
+            'Для електронного ресурсу не вказано дату звернення: №4',
+            'Не вказано рік видання: №4, 5',
+            'Не вказано кількість сторінок (книга) або діапазон сторінок (стаття): №6',
+            'Опис не закінчується крапкою: №4, 6',
+        ], $this->errorsOfType($response, 'Список джерел'));
+    }
+
+    // --- Рамка й основний напис ---
+
+    /** Рамка ЄСКД: група фігур з текстовими полями, прив'язана до абзацу ЗМІСТ */
+    private function framedContents(array $items): string
+    {
+        $boxes = implode('', array_map(fn ($t) => '<v:shape><v:textbox><w:txbxContent><w:p><w:r><w:t>'.$t.'</w:t></w:r></w:p></w:txbxContent></v:textbox></v:shape>', $items));
+
+        return '<w:p><w:pPr><w:jc w:val="center"/></w:pPr><w:r><w:pict><v:group>'.$boxes.'</v:group></w:pict></w:r><w:r><w:t>ЗМІСТ</w:t></w:r></w:p>';
+    }
+
+    private function thesis(?array $frame): string
+    {
+        return $this->document([$this->p(self::BODY)], self::GOOD_STYLE, ['intro' => array_filter([
+            $this->p('КУРСОВА РОБОТА'),
+            $this->p('на тему: «Система обліку кадрів»'),
+            $this->p('Виконав студент 4 курсу, 741 групи'),
+            $this->p('Петренко Іван Олегович'),
+            $this->p('(прізвище та ініціали)'),
+            $this->p('Керівник: Коваленко О. М.'),
+            $this->p('м. Конотоп, 2026 рік'),
+            $this->pageBreak(),
+            $frame === null ? $this->p('ЗМІСТ', '<w:jc w:val="center"/>') : $this->framedContents($frame),
+            $this->pageBreak(),
+            $this->p('ВСТУП', '<w:jc w:val="center"/>'),
+        ])]);
+    }
+
+    private const FRAME = ['Змн.', 'Арк.', '№ докум.', 'Підпис', 'Дата', 'КР.121.741.26.ПЗ', 'Розро б.', 'Петренко І.О.', 'Перевір.', 'Коваленко О.М.',
+        'Реценз.', 'Н. Контр.', 'Коваленко О.М.', 'Затверд.', '« Система обліку кадрів »', 'Літ.', 'Аркушів', '4 0', 'КІПФК СумДУ'];
+
+    public function test_correct_frame_passes(): void
+    {
+        $this->assertSame([], $this->errorsOfType($this->check($this->thesis(self::FRAME)), 'Оформлення (Рамка)'));
+    }
+
+    public function test_frame_errors(): void
+    {
+        $frame = ['Змн.', 'Арк.', '№ докум.', 'Підпис', 'Дата', 'Схема',     // немає шифру
+            'Розроб.', 'Петренко О.І.',                                     // переставлені ініціали
+            'Перевір.', 'Коваленко О.М.', 'Реценз.',
+            'Н. Контр.',                                                   // не заповнено
+            'Затверд.', 'Інша тема роботи',                                // не та тема
+            'Літ.', 'Аркушів', 'КІПФК СумДУ'];                              // немає кількості аркушів
+
+        $this->assertSame([
+            'В основному написі не заповнено «Н. контр.»',
+            'Розробник в основному написі («Петренко О.І.») не відповідає студенту на титулці («Петренко Іван Олегович»)',
+            'Назва роботи в основному написі не збігається з темою на титулці',
+            'В основному написі не вказано кількість аркушів («Аркушів»)',
+            'В основному написі немає позначення (шифру) документа',
+        ], $this->errorsOfType($this->check($this->thesis($frame)), 'Оформлення (Рамка)'));
+    }
+
+    public function test_missing_frame_in_thesis_and_not_in_other_documents(): void
+    {
+        $this->assertSame(['Не знайдено рамку з основним написом (форма 2) на аркуші ЗМІСТ'], $this->errorsOfType($this->check($this->thesis(null)), 'Оформлення (Рамка)'));
+        $this->assertSame([], $this->errorsOfType($this->check($this->document([$this->p(self::BODY)])), 'Оформлення (Рамка)'));
+    }
+
+    // --- Денний ліміт для студентів ---
+
+    private function userWithRole(string $role): User
+    {
+        $user = User::factory()->create();
+        $user->assignRole(Role::findOrCreate($role, 'web'));
+
+        return $user;
+    }
+
+    private function upload(User $user, string $docxPath)
+    {
+        return $this->actingAs($user)->post(route('norm-control.process'), [
+            'document' => new UploadedFile($docxPath, 'robota.docx', null, null, true),
+        ]);
+    }
+
+    public function test_student_can_check_one_document_per_day(): void
+    {
+        $student = $this->userWithRole(User::ROLE_STUDENT);
+        $doc = $this->document([$this->p(self::BODY)]);
+
+        $this->upload($student, $doc)->assertOk()->assertViewHas('report');
+        $this->assertSame(0, $student->remainingChecksToday());
+
+        $this->from(route('norm-control.index'))->upload($student, $doc)
+            ->assertRedirect(route('norm-control.index'))
+            ->assertSessionHasErrors('document');
+        $this->assertSame(1, $student->normControlChecks()->count());
+
+        $this->actingAs($student)->get(route('norm-control.index'))
+            ->assertSee('Ліміт перевірок на сьогодні вичерпано');
+    }
+
+    public function test_limit_resets_at_midnight_kyiv_time(): void
+    {
+        $student = $this->userWithRole(User::ROLE_STUDENT);
+        $doc = $this->document([$this->p(self::BODY)]);
+
+        // 23:30 за Києвом (21:30 UTC взимку) — перевірка «сьогодні»
+        $this->travelTo(Carbon::parse('2026-11-15 23:30', User::LIMIT_TIMEZONE));
+        $this->upload($student, $doc)->assertOk();
+        $this->assertSame(0, $student->remainingChecksToday());
+
+        // 00:10 наступного дня за Києвом — новий ліміт, хоча за UTC ще 15-те число
+        $this->travelTo(Carbon::parse('2026-11-16 00:10', User::LIMIT_TIMEZONE));
+        $this->assertSame(1, $student->remainingChecksToday());
+        $this->upload($student, $doc)->assertOk();
+    }
+
+    public function test_broken_file_does_not_use_up_the_limit(): void
+    {
+        $student = $this->userWithRole(User::ROLE_STUDENT);
+
+        // Справжній zip, але без word/document.xml
+        $broken = tempnam(sys_get_temp_dir(), 'docx');
+        $zip = new ZipArchive;
+        $zip->open($broken, ZipArchive::OVERWRITE);
+        $zip->addFromString('[Content_Types].xml', '<?xml version="1.0"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>');
+        $zip->addFromString('word/styles.xml', '<x/>');
+        $zip->close();
+
+        $this->from(route('norm-control.index'))->upload($student, $broken)->assertSessionHasErrors('document');
+
+        $this->assertSame(0, $student->normControlChecks()->count());
+        $this->assertSame(1, $student->remainingChecksToday());
+    }
+
+    public function test_teacher_and_admin_have_no_limit(): void
+    {
+        $doc = $this->document([$this->p(self::BODY)]);
+
+        foreach ([User::ROLE_TEACHER, User::ROLE_ADMIN] as $role) {
+            $user = $this->userWithRole($role);
+            // Навіть якщо в нього лишилася роль студента
+            $user->assignRole(Role::findOrCreate(User::ROLE_STUDENT, 'web'));
+
+            $this->assertNull($user->remainingChecksToday());
+            $this->upload($user, $doc)->assertOk();
+            $this->upload($user, $doc)->assertOk();
+            $this->assertSame(2, $user->normControlChecks()->count());
         }
     }
 

@@ -9,7 +9,8 @@ Route::get('/', function () {
 });
 
 // Маршрути для авторизації на фронтенді
-Route::post('/login-process', [FrontendAuthController::class, 'login'])->name('frontend.login');
+Route::post('/login-process', [FrontendAuthController::class, 'login'])->middleware('throttle:10,1')->name('frontend.login');
+Route::post('/register-process', [FrontendAuthController::class, 'register'])->middleware('throttle:5,1')->name('frontend.register');
 Route::post('/logout', [FrontendAuthController::class, 'logout'])->name('frontend.logout');
 
 // Якщо неавторизований користувач лізе на закриту сторінку - кидаємо його на головну
@@ -21,5 +22,5 @@ Route::get('/login', function () {
 Route::middleware(['auth'])->group(function () {
     Route::get('/norm-control', [NormControlController::class, 'index'])->name('norm-control.index');
     Route::post('/norm-control/process', [NormControlController::class, 'process'])->name('norm-control.process');
-    Route::post('/norm-control/download', [NormControlController::class, 'downloadPdf'])->name('norm-control.download');
+    Route::post('/norm-control/download', [NormControlController::class, 'downloadReport'])->name('norm-control.download');
 });

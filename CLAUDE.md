@@ -32,9 +32,14 @@ There are two separate UIs that share the same `users` table and session auth:
      - `PageSetupChecks` checks every `<w:sectPr>` (A4, margins, page numbering via header/footer rels).
      - `CitationChecks` matches `[n]` citations against the reference list.
      - `TitlePageInfo` parses the title page (student, topic, group, year…).
+     - `CaptionChecks` checks figure and table captions (format, numbering, placement next to the object via `objectNear()` in the controller) and text references to them. `FormulaChecks` checks display formulas (`m:oMath` / `Equation` OLE objects) and their numbers. `AppendixChecks` checks appendix letters, titles and references to them.
+     - `FrameChecks` reads the ЄСКД frame (form 2) from the shape group or header that contains its labels and compares it with `TitlePageInfo`.
+     - The reference-list entry format (ДСТУ 8302) is checked in `CitationChecks::entryErrors()`.
+   - In Ukrainian double-quoted PHP strings, write `{$var}`. PHP accepts UTF-8 bytes in identifiers, so `"$var»"` would read a variable named `var»`.
    - Body text checks apply only between `ВСТУП` and the reference list. Tables, captions, TOC entries and monospace-font code listings are skipped. Headings are recognised case-insensitively, and `caps`/`smallCaps` effects are resolved through styles. Repeated body violations are grouped as 5 examples plus a summary row.
    - Text extraction must use `<w:t(?:\s[^>]*)?>`. A plain `<w:t[^>]*>` also matches `<w:tab>`, `<w:tabs>` and `<w:tbl>`.
-   - Nothing is saved to the database. `process()` stores the computed `$report` array in the session (`norm_control_report`). `downloadPdf()` renders `norm-control/pdf_report.blade.php` from that array through dompdf, and `makeReportPdf()` adds the "Сторінка X з Y" footer via the canvas, because dompdf ignores CSS `counter(pages)`. New report data goes into `$report`, not into form fields.
+   - Uploaded files are never stored. Only a row in `norm_control_checks` is kept (file name, SHA-256, error count). `process()` stores the computed `$report` array in the session (`norm_control_report`). `downloadReport()` builds a Word report from it with `ReportDocx::build()`, which writes raw OOXML through `ZipArchive`; there is no PhpWord, because it needs the `gd` extension that XAMPP lacks. New report data goes into `$report`, not into form fields.
+   - To preview a generated report, convert it to PDF through Word COM in PowerShell (`Word.Application` → `SaveAs(..., 17)`). Word merges identical borders on adjacent paragraphs, so lines are drawn as table-cell borders. Field runs (`PAGE`/`NUMPAGES`) need their own `rPr`.
    - Tests in `tests/Feature/NormControlTest.php` build real `.docx` files in memory (`document()` helper with styles, sections, headers, theme). Use that helper for new rules.
 
 2. **Admin panel** (`/admin`, `app/Providers/Filament/AdminPanelProvider.php`)
@@ -42,6 +47,12 @@ There are two separate UIs that share the same `users` table and session auth:
    - Authorization uses **Filament Shield** on top of **spatie/laravel-permission** (`User` uses `HasRoles`). Permissions follow the `Action:Model` naming (e.g. `ViewAny:Role`), as in `app/Policies/RolePolicy.php`.
    - `app/Filament/Imports/UserImporter.php` bulk-imports users from CSV. It matches `department` and `group` by name, assigns comma-separated `roles` in `afterSave`, and gives new users the default password `acadoc123!`. Imports run on the **database queue**, so a queue worker must be running (`composer dev` starts one).
    - The language switcher (`bezhansalleh/filament-language-switch`) offers `uk` and `en` (`AppServiceProvider`). Labels for models and fields come from `lang/uk/models.php` through `__('models.*')`.
+
+Roles and access:
+- Role names are constants on `User`: `ROLE_STUDENT = 'Student'`, `ROLE_TEACHER = 'Викладач'`, `ROLE_ADMIN = 'super_admin'`.
+- Self-registration (`FrontendAuthController::register`, a modal in the layout, validation errors in the `register` bag) always assigns `Student`. The role the user picked is stored in `users.requested_role` (`student`/`teacher`), and an admin approves teachers in Filament with the "Призначити викладачем" table action. Only `super_admin` sees the roles field.
+- `User::canAccessPanel()` lets only `super_admin` into `/admin`. Students and teachers use the public site only.
+- Students without a higher role may run `User::STUDENT_DAILY_CHECKS` (1) norm-control checks per day, counted in `norm_control_checks` from 00:00 Europe/Kyiv (the app itself runs in UTC). `process()` reserves the check under `lockForUpdate` before analysing, and deletes the reservation if the file turns out to be broken.
 
 Domain models: `Department` 1→N `Group`, and `User` belongs to both a `Department` and a `Group` (`department_id`, `group_id`).
 

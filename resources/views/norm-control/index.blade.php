@@ -10,6 +10,22 @@
             <p class="text-gray-600">Завантажте вашу курсову або дипломну роботу у форматі .docx для автоматичної перевірки оформлення.</p>
         </div>
 
+        {{-- Денний ліміт для студентів ($remainingChecks === null — без обмежень) --}}
+        @if ($remainingChecks !== null)
+            <div class="mb-6 flex items-start gap-3 rounded-xl border p-4 {{ $remainingChecks > 0 ? 'bg-indigo-50 border-indigo-100 text-indigo-900' : 'bg-amber-50 border-amber-200 text-amber-900' }}">
+                <svg class="w-6 h-6 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                <div class="text-sm">
+                    @if ($remainingChecks > 0)
+                        <p class="font-bold">Сьогодні доступно перевірок: {{ $remainingChecks }} з {{ $dailyLimit }}</p>
+                        <p>Студенти можуть перевіряти {{ $dailyLimit }} документ на день. Перед завантаженням переконайтеся, що обрали остаточну версію роботи.</p>
+                    @else
+                        <p class="font-bold">Ліміт перевірок на сьогодні вичерпано</p>
+                        <p>Наступна перевірка буде доступна завтра з 00:00 (за київським часом). Звіт попередньої перевірки можна завантажити на сторінці результатів, доки ви не вийдете із системи.</p>
+                    @endif
+                </div>
+            </div>
+        @endif
+
         <!-- Блок завантаження файлу -->
         <div class="bg-white rounded-2xl shadow-sm border border-gray-200 p-8 text-center">
             <div class="flex justify-center mb-4">
@@ -62,7 +78,7 @@
                     </label>
                 </div>
 
-                <button type="submit" class="bg-indigo-600 text-white px-6 py-3 rounded-lg font-bold hover:bg-indigo-700 transition w-full sm:w-auto shadow-sm">
+                <button type="submit" @disabled($remainingChecks === 0) class="bg-indigo-600 text-white px-6 py-3 rounded-lg font-bold hover:bg-indigo-700 transition w-full sm:w-auto shadow-sm disabled:bg-gray-300 disabled:cursor-not-allowed">
                     Почати перевірку
                 </button>
             </form>

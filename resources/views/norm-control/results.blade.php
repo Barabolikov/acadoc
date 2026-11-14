@@ -229,9 +229,6 @@
                         </div>
                     </div>
                 </div>
-                <div class="mt-8 bg-blue-50 border border-blue-100 rounded-lg p-4 text-sm text-blue-800">
-                    <strong>ℹ️ Примітка:</strong> Наразі це базова перевірка. У майбутньому ми додамо сюди перевірку 14-го кеглю (розміру), 1.5 міжрядкового інтервалу та вирівнювання по ширині.
-                </div>
                 <!-- Журнал конкретних виправлень -->
                 <h2 class="text-lg font-bold text-gray-900 mt-10 mb-4 border-b pb-2 flex items-center gap-2">
                     <span class="text-xl">📋</span> Журнал виправлень (Що і де виправити)
@@ -294,13 +291,16 @@
                 @endif
             </div>
         </div>
-        <div class="mt-8 flex justify-center">
+        <div class="mt-8 flex flex-col items-center gap-4">
+            <div class="max-w-xl w-full bg-blue-50 border border-blue-100 rounded-lg p-4 text-sm text-blue-800 text-center">
+                <strong>ℹ️ Примітка:</strong> Отриманий файл звіту слід надіслати керівнику проєкту.
+            </div>
             <form action="{{ route('norm-control.download') }}" method="POST">
                 @csrf
-                {{-- Дані звіту беруться із сесії на сервері (див. NormControlController::downloadPdf) --}}
+                {{-- Дані звіту беруться із сесії на сервері (див. NormControlController::downloadReport) --}}
 
                 <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 px-8 rounded-2xl shadow-lg transition-all flex items-center gap-3">
-                    <span>📥 Завантажити повний звіт у PDF</span>
+                    <span>📥 Завантажити звіт (.docx)</span>
                 </button>
             </form>
         </div>

@@ -58,6 +58,65 @@ class CitationChecks
         return count($this->entries);
     }
 
+    /**
+     * Оформлення записів за ДСТУ 8302:2015 — базові правила, які можна перевірити надійно.
+     * Кожне правило дає одне зауваження з номерами записів.
+     *
+     * @return list<array{type: string, message: string, location: string, context: string}>
+     */
+    public function entryErrors(): array
+    {
+        $rules = [
+            'link' => ['Запис складається лише з посилання', 'Додайте автора, назву, «URL:» і «(дата звернення: ДД.ММ.РРРР)»'],
+            'url' => ['Перед електронною адресою немає «URL:»', 'Приклад: … URL: https://example.com (дата звернення: 05.04.2026).'],
+            'access' => ['Для електронного ресурсу не вказано дату звернення', 'Додайте «(дата звернення: ДД.ММ.РРРР)» після адреси'],
+            'year' => ['Не вказано рік видання', 'Рік зазначають після видавництва: «Київ : Наукова думка, 2020. 240 с.»'],
+            'pages' => ['Не вказано кількість сторінок (книга) або діапазон сторінок (стаття)', '«240 с.» для книги, «С. 12–18» для статті'],
+            'period' => ['Опис не закінчується крапкою', 'Наприкінці бібліографічного опису ставлять крапку'],
+        ];
+        $found = array_fill_keys(array_keys($rules), []);
+
+        foreach ($this->entries as $i => $entry) {
+            $n = $i + 1;
+            $text = trim(preg_replace('/^\d+[.)]\s*/u', '', trim($entry)));
+            $hasUrl = (bool) preg_match('~(https?://|www\.)~iu', $text);
+
+            if (preg_match('~^(https?://|www\.)\S+$~iu', $text)) {
+                $found['link'][] = $n;
+
+                continue; // для голого посилання інші правила зайві
+            }
+            if ($hasUrl && ! preg_match('/URL\s*:/u', $text)) {
+                $found['url'][] = $n;
+            }
+            if ($hasUrl && ! preg_match('/дата\s+звернення/iu', $text)) {
+                $found['access'][] = $n;
+            }
+            if (! preg_match('/(?<!\d)(1[89]|20)\d{2}(?!\d)/', $text)) {
+                $found['year'][] = $n;
+            }
+            if (! $hasUrl && ! preg_match('/\d+\s*(с|p|pp|S)\.|(?<!\p{L})(С|P|S|pp)\.\s*\d/u', $text)) {
+                $found['pages'][] = $n;
+            }
+            if (! preg_match('/\.\s*$/u', $text)) {
+                $found['period'][] = $n;
+            }
+        }
+
+        $errors = [];
+        foreach (array_filter($found) as $rule => $numbers) {
+            [$message, $hint] = $rules[$rule];
+            $errors[] = [
+                'type' => 'Список джерел',
+                'message' => $message.': №'.self::numbers($numbers),
+                'location' => $this->referencesTitle ?? 'Список джерел',
+                'context' => $hint,
+            ];
+        }
+
+        return $errors;
+    }
+
     /** @return array{found: bool, total: int, cited: int} cited — скільки джерел списку мають посилання в тексті */
     public function stats(): array
     {
@@ -83,10 +142,10 @@ class CitationChecks
             return [self::error('Список джерел порожній', $location, 'Додайте джерела після заголовка списку')];
         }
         if (! $this->cited) {
-            return [self::error('У тексті немає посилань на джерела', 'Основний текст', 'Посилайтеся на джерела у квадратних дужках: [1] або [1, с. 25]')];
+            return [self::error('У тексті немає посилань на джерела', 'Основний текст', 'Посилайтеся на джерела у квадратних дужках: [1] або [1, с. 25]'), ...$this->entryErrors()];
         }
 
-        $errors = [];
+        $errors = $this->entryErrors();
         $missing = array_keys(array_filter($this->cited, fn ($v, $n) => $n < 1 || $n > $total, ARRAY_FILTER_USE_BOTH));
         if ($missing) {
             sort($missing);
