@@ -86,12 +86,14 @@
         <div class="absolute -top-24 -right-24 w-96 h-96 bg-indigo-200/40 rounded-full blur-3xl"></div>
         <div class="absolute top-40 -left-24 w-72 h-72 bg-sky-200/40 rounded-full blur-3xl"></div>
 
-        <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-16 pb-20 lg:pt-24 lg:pb-28 grid lg:grid-cols-2 gap-14 items-center">
+        <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-12 pb-20 lg:pt-16 lg:pb-28">
+            {{-- Назва навчального закладу: по центру, великими літерами, градієнт як у «перед здачею» --}}
+            <p class="max-w-6xl mx-auto mb-12 lg:mb-16 text-center text-xl sm:text-2xl lg:text-4xl font-extrabold uppercase tracking-wide leading-snug text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-sky-500">
+                ВСП «Конотопський <span class="lg:whitespace-nowrap">індустріально-педагогічний</span> фаховий коледж СумДУ»
+            </p>
+
+            <div class="grid lg:grid-cols-2 gap-14 items-center">
             <div>
-                <span class="inline-flex items-center gap-2 bg-white border border-indigo-100 text-indigo-700 text-xs font-bold uppercase tracking-wider px-3 py-1.5 rounded-full shadow-sm mb-6">
-                    <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
-                    Корпоративний сервіс навчального закладу
-                </span>
 
                 <h1 class="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-gray-900 tracking-tight leading-[1.1] mb-6">
                     Перевірте роботу на&nbsp;нормоконтроль
@@ -176,6 +178,7 @@
                         <span class="text-indigo-600 font-semibold">Звіт .docx ↓</span>
                     </div>
                 </div>
+            </div>
             </div>
         </div>
     </section>
