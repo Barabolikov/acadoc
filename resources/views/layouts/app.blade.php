@@ -25,6 +25,11 @@
 
             <!-- Меню навігації -->
             <nav class="flex items-center gap-3 sm:gap-5 text-sm font-medium">
+                <div class="hidden md:flex items-center gap-5 text-gray-600 font-semibold">
+                    <a href="/#checks" class="hover:text-indigo-600 transition">Що перевіряємо</a>
+                    <a href="/#how" class="hover:text-indigo-600 transition">Як це працює</a>
+                    <a href="/#faq" class="hover:text-indigo-600 transition">FAQ</a>
+                </div>
 
                 @auth
                     <!-- Випадаюче меню "Функції" (Тільки для авторизованих) -->
@@ -121,9 +126,40 @@
     </main>
 
     <!-- Підвал -->
-    <footer class="bg-white border-t border-gray-200 py-8 mt-auto">
-        <div class="max-w-7xl mx-auto px-4 text-center text-sm text-gray-400">
-            &copy; {{ date('Y') }} Acadoc. Розроблено для оптимізації освітнього процесу.
+    <footer class="bg-gray-900 text-gray-400 mt-auto">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 grid grid-cols-1 md:grid-cols-3 gap-10">
+            <div>
+                <div class="flex items-center gap-2 mb-4">
+                    <div class="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center text-white font-bold text-xl">A</div>
+                    <span class="text-2xl font-black text-white tracking-tight">Acadoc</span>
+                </div>
+                <p class="text-sm leading-relaxed">Корпоративний сервіс автоматизованого нормоконтролю студентських робіт за ДСТУ 3008:2015 та стандартами ЄСКД.</p>
+            </div>
+            <div>
+                <p class="text-white font-bold mb-4">Сервіс</p>
+                <ul class="space-y-2 text-sm">
+                    <li><a href="/#checks" class="hover:text-white transition">Що перевіряється</a></li>
+                    <li><a href="/#how" class="hover:text-white transition">Як це працює</a></li>
+                    <li><a href="/#faq" class="hover:text-white transition">Часті запитання</a></li>
+                    @auth
+                        <li><a href="{{ route('norm-control.index') }}" class="hover:text-white transition">Нормоконтроль</a></li>
+                    @endauth
+                </ul>
+            </div>
+            <div>
+                <p class="text-white font-bold mb-4">Розробник</p>
+                <p class="text-sm text-gray-300 font-semibold">Barabolikov</p>
+                <a href="https://github.com/Barabolikov" target="_blank" rel="noopener" class="inline-flex items-center gap-2 text-sm mt-2 hover:text-white transition">
+                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 .5a12 12 0 00-3.8 23.4c.6.1.8-.3.8-.6v-2c-3.3.7-4-1.6-4-1.6-.6-1.4-1.4-1.8-1.4-1.8-1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1 1.8 2.8 1.3 3.5 1 .1-.8.4-1.3.7-1.6-2.7-.3-5.5-1.3-5.5-6 0-1.2.5-2.3 1.2-3.1-.1-.4-.5-1.6.1-3.2 0 0 1-.3 3.3 1.2a11.5 11.5 0 016 0C17.3 4.7 18.3 5 18.3 5c.7 1.6.2 2.8.1 3.2.8.8 1.2 1.9 1.2 3.1 0 4.7-2.8 5.7-5.5 6 .4.4.8 1.1.8 2.2v3.3c0 .3.2.7.8.6A12 12 0 0012 .5z"/></svg>
+                    github.com/Barabolikov
+                </a>
+            </div>
+        </div>
+        <div class="border-t border-white/10">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5 text-sm flex flex-col sm:flex-row justify-between gap-2">
+                <span>&copy; {{ date('Y') }} Acadoc. Усі права захищено.</span>
+                <span>Розробник: <span class="text-gray-300">Barabolikov</span></span>
+            </div>
         </div>
     </footer>
 

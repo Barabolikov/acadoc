@@ -1,60 +1,354 @@
 @extends('layouts.app')
 
-@section('title', 'Головна | Acadoc LMS')
+@section('title', 'Acadoc | Нормоконтроль студентських робіт за ДСТУ та ЄСКД')
 
 @section('content')
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-24">
+    @php
+        // Що перевіряється зараз (реалізовано в NormControlController)
+        $checkGroups = [
+            [
+                'title' => 'Параметри сторінки',
+                'standard' => 'ДСТУ 3008:2015, ГОСТ 2.105',
+                'color' => 'indigo',
+                'icon' => 'M4 5a1 1 0 011-1h14a1 1 0 011 1v14a1 1 0 01-1 1H5a1 1 0 01-1-1V5zm4 3h8M8 12h8M8 16h5',
+                'items' => ['Формат аркуша А4 у кожному розділі', 'Ліве поле 30 мм, праве — від 10 мм', 'Верхнє й нижнє поля — від 20 мм', 'Нумерація в правому верхньому куті, без номера на титулці'],
+            ],
+            [
+                'title' => 'Основний текст',
+                'standard' => 'ДСТУ 3008:2015',
+                'color' => 'emerald',
+                'icon' => 'M4 6h16M4 10h16M4 14h16M4 18h10',
+                'items' => ['Шрифт Times New Roman', 'Розмір шрифту 14 пт', 'Міжрядковий інтервал 1,5', 'Абзацний відступ 1,25 см', 'Вирівнювання по ширині'],
+            ],
+            [
+                'title' => 'Заголовки',
+                'standard' => 'ДСТУ 3008:2015, ГОСТ 2.105',
+                'color' => 'amber',
+                'icon' => 'M6 4v16M18 4v16M6 12h12',
+                'items' => ['ЗМІСТ, ВСТУП, ВИСНОВКИ, РОЗДІЛ — великими літерами', 'Структурні заголовки по центру', 'Без крапки в кінці заголовка'],
+            ],
+            [
+                'title' => 'Структура роботи',
+                'standard' => 'ДСТУ 3008:2015',
+                'color' => 'sky',
+                'icon' => 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4',
+                'items' => ['Титульний аркуш і завдання', 'Зміст, вступ, висновки', 'Список використаних джерел, додатки', 'Правильний порядок розділів', 'Кожен розділ — з нової сторінки', 'Автоматично сформований зміст'],
+            ],
+            [
+                'title' => 'Рисунки й таблиці',
+                'standard' => 'ДСТУ 3008:2015, ГОСТ 2.105',
+                'color' => 'rose',
+                'icon' => 'M4 16l4.6-4.6a2 2 0 012.8 0L16 16m-2-2l1.6-1.6a2 2 0 012.8 0L20 14M14 8h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z',
+                'items' => ['Кожна таблиця має назву «Таблиця N»', 'Кожен рисунок має підпис «Рисунок N»', 'Без скорочень «Рис.» / «Мал.»'],
+            ],
+            [
+                'title' => 'Посилання на джерела',
+                'standard' => 'ДСТУ 3008:2015, ДСТУ 8302:2015',
+                'color' => 'indigo',
+                'icon' => 'M12 6.25v13m0-13C10.8 5.5 9.2 5 7.5 5S4.2 5.5 3 6.25v13C4.2 18.5 5.8 18 7.5 18s3.3.5 4.5 1.25m0-13C13.2 5.5 14.8 5 16.5 5s3.3.5 4.5 1.25v13C19.8 18.5 18.2 18 16.5 18s-3.3.5-4.5 1.25',
+                'items' => ['Посилання у форматі [1], [1, с. 25], [2–4]', 'Немає посилань на неіснуючі джерела', 'На кожне джерело зі списку є посилання'],
+            ],
+            [
+                'title' => 'Стиль викладу',
+                'standard' => 'Вимоги до наукового тексту',
+                'color' => 'violet',
+                'icon' => 'M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z',
+                'items' => ['Виклад від першої особи множини («ми»)', 'Пошук займенника «я» з точним місцем у тексті'],
+            ],
+        ];
 
-        <!-- Геройський блок (по центру) -->
-        <div class="text-center max-w-4xl mx-auto mb-20">
-            <h1 class="text-5xl sm:text-6xl font-extrabold text-gray-900 tracking-tight mb-6">
-                Єдиний цифровий простір <br>
-                <span class="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-blue-500">
-                    навчального закладу
+        // Заплановано
+        $planned = [
+            'Формат підписів «Рисунок 1.2 – Назва»',
+            'Посилання в тексті на кожен рисунок і таблицю',
+            'Позначення додатків (А, Б, В…)',
+            'Рамка та основний напис (ГОСТ 2.104)',
+            'Оформлення джерел за ДСТУ 8302:2015',
+            'Нумерація формул і посилання на них',
+        ];
+
+        $faq = [
+            ['q' => 'Хто може користуватися сервісом?', 'a' => 'Сервіс корпоративний: доступ мають лише студенти й викладачі навчального закладу. Обліковий запис створює адміністратор, тому окремої реєстрації немає.'],
+            ['q' => 'Які файли можна перевірити?', 'a' => 'Документи Microsoft Word у форматі .docx розміром до 10 МБ. Якщо робота в .doc або .pdf, відкрийте її у Word і збережіть як .docx.'],
+            ['q' => 'Чи зберігається моя робота на сервері?', 'a' => 'Ні. Файл аналізується одразу після завантаження й не зберігається в базі даних. Результат бачите лише ви, а за бажанням можете завантажити його як PDF-звіт.'],
+            ['q' => 'Чи замінює перевірка нормоконтролера?', 'a' => 'Ні, вона допомагає підготуватися до нормоконтролю. Сервіс знаходить типові помилки оформлення до того, як ви здасте роботу. Остаточне рішення ухвалює нормоконтролер або керівник.'],
+            ['q' => 'Чому сервіс показує помилку, якої в мене немає?', 'a' => 'Перевірка спирається на внутрішню розмітку Word. Якщо форматування задано вручну, а не через стилі, програма може його не розпізнати. Використовуйте стилі «Звичайний» та «Заголовок 1–3», і результат буде точнішим.'],
+        ];
+    @endphp
+
+    {{-- ГОЛОВНИЙ БЛОК --}}
+    <section class="relative overflow-hidden bg-gradient-to-b from-indigo-50 via-white to-white">
+        <div class="absolute -top-24 -right-24 w-96 h-96 bg-indigo-200/40 rounded-full blur-3xl"></div>
+        <div class="absolute top-40 -left-24 w-72 h-72 bg-sky-200/40 rounded-full blur-3xl"></div>
+
+        <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-16 pb-20 lg:pt-24 lg:pb-28 grid lg:grid-cols-2 gap-14 items-center">
+            <div>
+                <span class="inline-flex items-center gap-2 bg-white border border-indigo-100 text-indigo-700 text-xs font-bold uppercase tracking-wider px-3 py-1.5 rounded-full shadow-sm mb-6">
+                    <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                    Корпоративний сервіс навчального закладу
                 </span>
-            </h1>
-            <p class="text-xl text-gray-600 mb-10 leading-relaxed max-w-2xl mx-auto">
-                Сучасна платформа для організації навчального процесу. Від видачі завдань та комунікації до автоматизованого нормоконтролю документів.
-            </p>
 
-            <!-- Якщо користувач не увійшов, запропонуємо кнопку, яка теж відкриває наше вікно -->
+                <h1 class="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-gray-900 tracking-tight leading-[1.1] mb-6">
+                    Перевірте роботу на&nbsp;нормоконтроль
+                    <span class="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-sky-500">перед здачею</span>
+                </h1>
+
+                <p class="text-lg sm:text-xl text-gray-600 leading-relaxed mb-8 max-w-xl">
+                    Автоматична перевірка курсових, дипломних і звітів з практики на відповідність
+                    <strong class="text-gray-800">ДСТУ 3008:2015</strong> та стандартам <strong class="text-gray-800">ЄСКД</strong>.
+                    Завантажте .docx і за кілька секунд отримайте список помилок із точним місцем у тексті.
+                </p>
+
+                <div class="flex flex-col sm:flex-row gap-3 mb-8">
+                    @guest
+                        <button @click="isLoginOpen = true" class="inline-flex items-center justify-center gap-2 bg-indigo-600 text-white px-8 py-4 rounded-xl font-bold hover:bg-indigo-700 shadow-lg shadow-indigo-600/20 hover:shadow-xl transition transform hover:-translate-y-0.5">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M16 8l-4-4-4 4M12 4v12"/></svg>
+                            Увійти й перевірити роботу
+                        </button>
+                    @else
+                        <a href="{{ route('norm-control.index') }}" class="inline-flex items-center justify-center gap-2 bg-indigo-600 text-white px-8 py-4 rounded-xl font-bold hover:bg-indigo-700 shadow-lg shadow-indigo-600/20 hover:shadow-xl transition transform hover:-translate-y-0.5">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M16 8l-4-4-4 4M12 4v12"/></svg>
+                            Завантажити роботу
+                        </a>
+                    @endguest
+                    <a href="#checks" class="inline-flex items-center justify-center px-8 py-4 rounded-xl font-bold text-gray-700 bg-white border border-gray-200 hover:border-indigo-300 hover:text-indigo-700 transition">
+                        Що перевіряється
+                    </a>
+                </div>
+
+                <div class="flex flex-wrap gap-2">
+                    @foreach (['Поля та формат', 'Шрифт і інтервали', 'Заголовки', 'Структура роботи', 'Підписи', 'PDF-звіт'] as $badge)
+                        <span class="inline-flex items-center gap-1.5 bg-white border border-gray-200 text-gray-700 text-sm font-medium px-3 py-1.5 rounded-full">
+                            <svg class="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                            {{ $badge }}
+                        </span>
+                    @endforeach
+                </div>
+            </div>
+
+            {{-- Приклад результату перевірки --}}
+            <div class="relative">
+                <div class="bg-white rounded-3xl shadow-2xl shadow-indigo-900/10 border border-gray-100 p-6 sm:p-8">
+                    <div class="flex items-center justify-between mb-6">
+                        <div class="flex items-center gap-3 min-w-0">
+                            <div class="w-11 h-11 shrink-0 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
+                                <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.6a1 1 0 01.7.3l5.4 5.4a1 1 0 01.3.7V19a2 2 0 01-2 2z"/></svg>
+                            </div>
+                            <div class="min-w-0">
+                                <p class="font-bold text-gray-900 truncate">Курсова_робота_Іваненко.docx</p>
+                                <p class="text-xs text-gray-500">Приклад звіту перевірки</p>
+                            </div>
+                        </div>
+                        <span class="shrink-0 bg-amber-100 text-amber-700 text-xs font-bold px-3 py-1 rounded-full">5 зауважень</span>
+                    </div>
+
+                    <div class="grid grid-cols-3 gap-3 mb-6 text-center">
+                        <div class="bg-gray-50 rounded-xl p-3"><p class="text-2xl font-extrabold text-gray-900">318</p><p class="text-xs text-gray-500">абзаців</p></div>
+                        <div class="bg-gray-50 rounded-xl p-3"><p class="text-2xl font-extrabold text-gray-900">6</p><p class="text-xs text-gray-500">таблиць</p></div>
+                        <div class="bg-gray-50 rounded-xl p-3"><p class="text-2xl font-extrabold text-gray-900">11</p><p class="text-xs text-gray-500">рисунків</p></div>
+                    </div>
+
+                    <ul class="space-y-3 text-sm">
+                        <li class="flex gap-3 p-3 rounded-xl bg-rose-50 border border-rose-100">
+                            <span class="w-2 shrink-0 rounded-full bg-rose-500"></span>
+                            <div><p class="font-semibold text-gray-900">Ліве поле: 25 мм (треба 30 мм)</p><p class="text-gray-500 text-xs">Налаштування сторінки</p></div>
+                        </li>
+                        <li class="flex gap-3 p-3 rounded-xl bg-amber-50 border border-amber-100">
+                            <span class="w-2 shrink-0 rounded-full bg-amber-500"></span>
+                            <div><p class="font-semibold text-gray-900">Інтервал не 1,5</p><p class="text-gray-500 text-xs">РОЗДІЛ 1 · «Аналіз предметної області…»</p></div>
+                        </li>
+                        <li class="flex gap-3 p-3 rounded-xl bg-violet-50 border border-violet-100">
+                            <span class="w-2 shrink-0 rounded-full bg-violet-500"></span>
+                            <div><p class="font-semibold text-gray-900">Пишіть «Рисунок» повністю</p><p class="text-gray-500 text-xs">1.2 · «Рис. 3 Схема бази даних»</p></div>
+                        </li>
+                    </ul>
+
+                    <div class="mt-6 flex items-center justify-between text-sm">
+                        <span class="flex items-center gap-2 text-emerald-600 font-semibold">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                            Структура роботи правильна
+                        </span>
+                        <span class="text-indigo-600 font-semibold">PDF-звіт ↓</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    {{-- ПЕРЕВАГИ --}}
+    <section class="border-y border-gray-100 bg-white">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 grid grid-cols-1 sm:grid-cols-3 gap-8">
+            @foreach ([
+                ['Кілька секунд', 'на перевірку однієї роботи', 'M13 10V3L4 14h7v7l9-11h-7z'],
+                ['Конфіденційно', 'файл не зберігається на сервері', 'M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z'],
+                ['ДСТУ та ЄСКД', 'вимоги, за якими працює нормоконтроль закладу', 'M9 12l2 2 4-4m5.6-4A12 12 0 0112 2.9 12 12 0 013.4 6 12 12 0 003 9c0 5.6 3.8 10.3 9 11.6 5.2-1.3 9-6 9-11.6 0-1-.1-2-.4-3z'],
+            ] as [$title, $text, $icon])
+                <div class="flex items-center gap-4">
+                    <div class="w-12 h-12 shrink-0 rounded-2xl bg-indigo-600 text-white flex items-center justify-center">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="{{ $icon }}"/></svg>
+                    </div>
+                    <div>
+                        <p class="font-extrabold text-gray-900 text-lg">{{ $title }}</p>
+                        <p class="text-gray-500 text-sm">{{ $text }}</p>
+                    </div>
+                </div>
+            @endforeach
+        </div>
+    </section>
+
+    {{-- ЩО ПЕРЕВІРЯЄТЬСЯ --}}
+    <section id="checks" class="scroll-mt-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 lg:py-28">
+        <div class="text-center max-w-3xl mx-auto mb-14">
+            <p class="text-indigo-600 font-bold uppercase tracking-wider text-sm mb-3">Що перевіряється</p>
+            <h2 class="text-3xl sm:text-4xl font-extrabold text-gray-900 mb-4">Вимоги стандартів, які найчастіше порушують</h2>
+            <p class="text-gray-600 text-lg">
+                Перевірка спирається на ДСТУ 3008:2015 «Звіти у сфері науки і техніки. Структура та правила оформлювання»
+                і на стандарти ЄСКД до текстових документів (ГОСТ 2.105).
+            </p>
+        </div>
+
+        @php
+            $palette = [
+                'indigo'  => 'bg-indigo-50 text-indigo-600',
+                'emerald' => 'bg-emerald-50 text-emerald-600',
+                'amber'   => 'bg-amber-50 text-amber-600',
+                'sky'     => 'bg-sky-50 text-sky-600',
+                'rose'    => 'bg-rose-50 text-rose-600',
+                'violet'  => 'bg-violet-50 text-violet-600',
+            ];
+        @endphp
+
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            @foreach ($checkGroups as $group)
+                <div class="bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-lg hover:-translate-y-1 transition p-7">
+                    <div class="w-12 h-12 rounded-xl {{ $palette[$group['color']] }} flex items-center justify-center mb-5">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="{{ $group['icon'] }}"/></svg>
+                    </div>
+                    <h3 class="text-lg font-bold text-gray-900">{{ $group['title'] }}</h3>
+                    <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-4">{{ $group['standard'] }}</p>
+                    <ul class="space-y-2.5">
+                        @foreach ($group['items'] as $item)
+                            <li class="flex gap-2.5 text-gray-600 text-sm">
+                                <svg class="w-5 h-5 shrink-0 text-emerald-500" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                                {{ $item }}
+                            </li>
+                        @endforeach
+                    </ul>
+                </div>
+            @endforeach
+        </div>
+
+        <div class="mt-8 rounded-2xl border border-dashed border-indigo-200 bg-indigo-50/50 p-7">
+            <div class="flex flex-col md:flex-row md:items-center gap-5">
+                <div class="md:w-64 shrink-0">
+                    <p class="font-bold text-gray-900">Незабаром</p>
+                    <p class="text-sm text-gray-500">Перевірки, які ми додаємо наступними</p>
+                </div>
+                <div class="flex flex-wrap gap-2">
+                    @foreach ($planned as $item)
+                        <span class="bg-white border border-indigo-100 text-gray-700 text-sm px-3 py-1.5 rounded-full">{{ $item }}</span>
+                    @endforeach
+                </div>
+            </div>
+        </div>
+    </section>
+
+    {{-- ЯК ЦЕ ПРАЦЮЄ --}}
+    <section id="how" class="scroll-mt-20 bg-gray-900 text-white">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 lg:py-28">
+            <div class="text-center max-w-3xl mx-auto mb-14">
+                <p class="text-indigo-300 font-bold uppercase tracking-wider text-sm mb-3">Як це працює</p>
+                <h2 class="text-3xl sm:text-4xl font-extrabold mb-4">Чотири кроки до роботи без зауважень</h2>
+                <p class="text-gray-400 text-lg">Без встановлення програм: потрібні лише браузер і ваш файл Word.</p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                @foreach ([
+                    ['Увійдіть у систему', 'Використайте логін і пароль, які видав адміністратор навчального закладу.'],
+                    ['Завантажте .docx', 'Відкрийте «Функції → Нормоконтроль» і оберіть файл роботи (до 10 МБ).'],
+                    ['Отримайте звіт', 'Система розбере документ і покаже кожне зауваження: що не так, у якому розділі та в якому фрагменті тексту.'],
+                    ['Виправте й перевірте знову', 'Внесіть правки у Word, повторіть перевірку й завантажте PDF-звіт для керівника.'],
+                ] as $i => [$title, $text])
+                    <div class="relative bg-white/5 border border-white/10 rounded-2xl p-7 hover:bg-white/10 transition">
+                        <span class="block text-5xl font-black text-transparent bg-clip-text bg-gradient-to-br from-indigo-400 to-sky-300 mb-4">{{ $i + 1 }}</span>
+                        <h3 class="text-lg font-bold mb-2">{{ $title }}</h3>
+                        <p class="text-gray-400 text-sm leading-relaxed">{{ $text }}</p>
+                    </div>
+                @endforeach
+            </div>
+
+            <div class="mt-12 rounded-2xl bg-gradient-to-r from-indigo-600/30 to-sky-500/20 border border-indigo-400/20 p-6 sm:p-8 flex flex-col sm:flex-row gap-4 sm:items-center">
+                <svg class="w-8 h-8 shrink-0 text-indigo-300" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9.7 17h4.6M12 3v1m6.4 1.6l-.7.7M21 12h-1M4 12H3m3.3-5.7l-.7-.7m2.8 9.8a5 5 0 117 0l-.5.6a3.4 3.4 0 00-1 2.4V19a2 2 0 11-4 0v-.2c0-.9-.4-1.8-1-2.4l-.5-.5z"/></svg>
+                <p class="text-gray-200">
+                    <strong class="text-white">Порада:</strong> оформлюйте роботу через стилі Word («Звичайний», «Заголовок 1–3»)
+                    і вставляйте зміст через «Посилання → Зміст». Так перевірка буде найточнішою, а виправлення найшвидшими.
+                </p>
+            </div>
+        </div>
+    </section>
+
+    {{-- ДЛЯ КОГО --}}
+    <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 lg:py-28">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div class="rounded-3xl bg-gradient-to-br from-indigo-50 to-white border border-indigo-100 p-8 sm:p-10">
+                <p class="text-indigo-600 font-bold uppercase tracking-wider text-sm mb-3">Для студентів</p>
+                <h3 class="text-2xl sm:text-3xl font-extrabold text-gray-900 mb-4">Здавайте роботу з першого разу</h3>
+                <p class="text-gray-600 mb-6">Знайдіть помилки оформлення самостійно, до походу на нормоконтроль, і заощадьте час на повторних перевірках.</p>
+                <ul class="space-y-3 text-gray-700">
+                    @foreach (['Конкретні зауваження з місцем у тексті', 'Перевірка необмежену кількість разів', 'PDF-звіт для керівника роботи'] as $item)
+                        <li class="flex gap-3"><svg class="w-6 h-6 shrink-0 text-indigo-600" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>{{ $item }}</li>
+                    @endforeach
+                </ul>
+            </div>
+            <div class="rounded-3xl bg-gradient-to-br from-emerald-50 to-white border border-emerald-100 p-8 sm:p-10">
+                <p class="text-emerald-600 font-bold uppercase tracking-wider text-sm mb-3">Для викладачів і нормоконтролерів</p>
+                <h3 class="text-2xl sm:text-3xl font-extrabold text-gray-900 mb-4">Менше рутини, більше змісту</h3>
+                <p class="text-gray-600 mb-6">Технічні вимоги перевіряє система, а ви зосереджуєтеся на змісті роботи та науковій складовій.</p>
+                <ul class="space-y-3 text-gray-700">
+                    @foreach (['Однакові критерії для всіх студентів', 'Керування відділеннями, групами й користувачами', 'Масовий імпорт студентів із CSV'] as $item)
+                        <li class="flex gap-3"><svg class="w-6 h-6 shrink-0 text-emerald-600" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>{{ $item }}</li>
+                    @endforeach
+                </ul>
+            </div>
+        </div>
+    </section>
+
+    {{-- FAQ --}}
+    <section id="faq" class="scroll-mt-20 bg-gray-50 border-t border-gray-100">
+        <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-20 lg:py-28">
+            <div class="text-center mb-12">
+                <p class="text-indigo-600 font-bold uppercase tracking-wider text-sm mb-3">FAQ</p>
+                <h2 class="text-3xl sm:text-4xl font-extrabold text-gray-900">Часті запитання</h2>
+            </div>
+
+            <div class="space-y-3" x-data="{ open: 0 }">
+                @foreach ($faq as $i => $item)
+                    <div class="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+                        <button type="button" @click="open = open === {{ $i }} ? null : {{ $i }}" class="w-full flex items-center justify-between gap-4 text-left px-6 py-5 font-bold text-gray-900 hover:text-indigo-700 transition">
+                            {{ $item['q'] }}
+                            <svg class="w-5 h-5 shrink-0 text-indigo-600 transition-transform duration-200" :class="{ 'rotate-45': open === {{ $i }} }" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 5v14M5 12h14"/></svg>
+                        </button>
+                        <div x-show="open === {{ $i }}" x-transition.opacity class="px-6 pb-5 text-gray-600 leading-relaxed" @if($i !== 0) style="display: none;" @endif>
+                            {{ $item['a'] }}
+                        </div>
+                    </div>
+                @endforeach
+            </div>
+        </div>
+    </section>
+
+    {{-- ЗАКЛИК --}}
+    <section class="bg-gradient-to-r from-indigo-600 to-sky-600">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 flex flex-col lg:flex-row items-center justify-between gap-8 text-center lg:text-left">
+            <div>
+                <h2 class="text-3xl font-extrabold text-white mb-2">Готові перевірити свою роботу?</h2>
+                <p class="text-indigo-100 text-lg">Знайдіть помилки оформлення до того, як їх знайде нормоконтролер.</p>
+            </div>
             @guest
-                <button @click="isLoginOpen = true" class="bg-indigo-600 text-white px-8 py-4 rounded-xl font-bold hover:bg-indigo-700 shadow-lg hover:shadow-xl transition transform hover:-translate-y-1">
-                    Почати роботу
-                </button>
+                <button @click="isLoginOpen = true" class="shrink-0 bg-white text-indigo-700 px-8 py-4 rounded-xl font-bold hover:bg-indigo-50 shadow-lg transition">Увійти в систему</button>
             @else
-                <a href="{{ route('norm-control.index') }}" class="inline-block bg-indigo-600 text-white px-8 py-4 rounded-xl font-bold hover:bg-indigo-700 shadow-lg hover:shadow-xl transition transform hover:-translate-y-1">
-                    Перейти до нормоконтролю
-                </a>
+                <a href="{{ route('norm-control.index') }}" class="shrink-0 bg-white text-indigo-700 px-8 py-4 rounded-xl font-bold hover:bg-indigo-50 shadow-lg transition">Перевірити роботу</a>
             @endguest
         </div>
-
-        <!-- Блок з модулями системи -->
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-            <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition">
-                <div class="w-12 h-12 bg-blue-100 text-blue-600 rounded-xl flex items-center justify-center text-2xl mb-4">👥</div>
-                <h3 class="text-lg font-bold text-gray-900 mb-2">Групи та Студенти</h3>
-                <p class="text-gray-500 text-sm">Зручне управління академічними групами, профілями студентів та викладачів.</p>
-            </div>
-
-            <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition">
-                <div class="w-12 h-12 bg-green-100 text-green-600 rounded-xl flex items-center justify-center text-2xl mb-4">📝</div>
-                <h3 class="text-lg font-bold text-gray-900 mb-2">Завдання та Оцінки</h3>
-                <p class="text-gray-500 text-sm">Створення практичних завдань, дедлайни, завантаження робіт та електронний журнал.</p>
-            </div>
-
-            <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition">
-                <div class="w-12 h-12 bg-purple-100 text-purple-600 rounded-xl flex items-center justify-center text-2xl mb-4">💬</div>
-                <h3 class="text-lg font-bold text-gray-900 mb-2">Комунікація</h3>
-                <p class="text-gray-500 text-sm">Внутрішні чати, обговорення проектів та швидкий зв'язок між викладачем і студентом.</p>
-            </div>
-
-            <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition">
-                <div class="w-12 h-12 bg-orange-100 text-orange-600 rounded-xl flex items-center justify-center text-2xl mb-4">🔍</div>
-                <h3 class="text-lg font-bold text-gray-900 mb-2">Нормоконтроль</h3>
-                <p class="text-gray-500 text-sm">Автоматизована перевірка форматування курсових та дипломних робіт за стандартами.</p>
-            </div>
-        </div>
-
-    </div>
+    </section>
 @endsection
