@@ -88,7 +88,7 @@
                 <div class="space-y-4">
                     <div class="flex items-start gap-3">
                         <div class="mt-1">
-                            @if(in_array('Times New Roman', $fonts))
+                            @if($mainFont === 'Times New Roman')
                                 <svg class="w-6 h-6 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                             @else
                                 <svg class="w-6 h-6 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
@@ -97,16 +97,18 @@
                         <div>
                             <p class="font-bold text-gray-900">Основний шрифт</p>
                             <p class="text-sm text-gray-600">
-                                @if(in_array('Times New Roman', $fonts))
-                                    Знайдено шрифт <span class="font-semibold">Times New Roman</span>. Це відповідає стандартам ДСТУ.
+                                @if($mainFont === null)
+                                    Основний текст не знайдено (потрібен розділ «ВСТУП»), тому шрифт не визначено.
+                                @elseif($mainFont === 'Times New Roman')
+                                    Основний текст набрано шрифтом <span class="font-semibold">Times New Roman</span> ({{ $mainFontShare }}% тексту). Це відповідає вимогам.
                                 @else
-                                    <span class="text-red-600">Увага!</span> У прямих стилях не знайдено Times New Roman.
+                                    <span class="text-red-600">Увага!</span> Основний текст набрано шрифтом <span class="font-semibold">{{ $mainFont }}</span> ({{ $mainFontShare }}% тексту), треба Times New Roman.
                                 @endif
                             </p>
 
-                            <!-- Виводимо всі знайдені шрифти -->
+                            {{-- Шрифти, задані вручну: лістинги коду, рамка, формули тощо — довідково --}}
                             @if(count($fonts) > 0)
-                                <p class="text-xs text-gray-400 mt-2">Використані шрифти у файлі: {{ implode(', ', $fonts) }}</p>
+                                <p class="text-xs text-gray-400 mt-2">Інші шрифти, задані вручну (код, рамка, формули тощо): {{ implode(', ', $fonts) }}</p>
                             @endif
                         </div>
                         @if($structure['usesPronounI'])
@@ -171,27 +173,23 @@
                         </div>
                         <!-- 5. Висновки -->
                         <div class="relative pl-6">
-                            <div class="absolute -left-[9px] top-1 w-4 h-4 rounded-full border-2 border-white {{ $structure['conclusionsIndex'] !== -1 && !$structure['hasWrongConclusionWord'] ? 'bg-green-500' : 'bg-red-500' }}"></div>
+                            <div class="absolute -left-[9px] top-1 w-4 h-4 rounded-full border-2 border-white {{ $structure['conclusionsIndex'] !== -1 ? 'bg-green-500' : 'bg-red-500' }}"></div>
                             <p class="font-bold text-gray-900">5. Висновки</p>
-                            @if($structure['hasWrongConclusionWord'])
-                                <p class="text-sm text-red-600 font-medium">Помилка: Використано слово "ВИСНОВОК" замість "ВИСНОВКИ".</p>
-                            @elseif($structure['conclusionsIndex'] !== -1)
-                                <p class="text-sm text-gray-600">Розділ знайдено. Назва коректна.</p>
+                            @if($structure['conclusionsIndex'] !== -1)
+                                <p class="text-sm text-gray-600">Розділ знайдено: «{{ $structure['conclusionsTitle'] }}».</p>
                             @else
-                                <p class="text-sm text-red-600 font-medium">Помилка: Розділ "ВИСНОВКИ" відсутній.</p>
+                                <p class="text-sm text-red-600 font-medium">Помилка: розділ «ВИСНОВКИ» («ВИСНОВОК») відсутній.</p>
                             @endif
                         </div>
 
                         <!-- 6. Список джерел -->
                         <div class="relative pl-6">
-                            <div class="absolute -left-[9px] top-1 w-4 h-4 rounded-full border-2 border-white {{ $structure['referencesIndex'] !== -1 && !$structure['hasWrongReferencesWord'] ? 'bg-green-500' : 'bg-red-500' }}"></div>
+                            <div class="absolute -left-[9px] top-1 w-4 h-4 rounded-full border-2 border-white {{ $structure['referencesIndex'] !== -1 ? 'bg-green-500' : 'bg-red-500' }}"></div>
                             <p class="font-bold text-gray-900">6. Список джерел</p>
-                            @if($structure['hasWrongReferencesWord'])
-                                <p class="text-sm text-red-600 font-medium">Помилка: Використано стару назву "СПИСОК ВИКОРИСТАНОЇ ЛІТЕРАТУРИ". Потрібно "СПИСОК ВИКОРИСТАНИХ ДЖЕРЕЛ".</p>
-                            @elseif($structure['referencesIndex'] !== -1)
-                                <p class="text-sm text-gray-600">Розділ знайдено. Назва коректна.</p>
+                            @if($structure['referencesIndex'] !== -1)
+                                <p class="text-sm text-gray-600">Розділ знайдено: «{{ $structure['referencesTitle'] }}».</p>
                             @else
-                                <p class="text-sm text-red-600 font-medium">Помилка: Розділ відсутній.</p>
+                                <p class="text-sm text-red-600 font-medium">Помилка: розділ відсутній. Допустимі назви: «СПИСОК ВИКОРИСТАНИХ ДЖЕРЕЛ», «СПИСОК ЛІТЕРАТУРИ», «ПЕРЕЛІК ДЖЕРЕЛ ПОСИЛАННЯ».</p>
                             @endif
                         </div>
 
@@ -299,20 +297,7 @@
         <div class="mt-8 flex justify-center">
             <form action="{{ route('norm-control.download') }}" method="POST">
                 @csrf
-                <!-- Приховані поля з даними -->
-                <input type="hidden" name="fileName" value="{{ $fileName }}">
-                <input type="hidden" name="studentName" value="{{ $studentName }}">
-                <input type="hidden" name="supervisorName" value="{{ $supervisorName }}">
-                <input type="hidden" name="paragraphsCount" value="{{ $paragraphsCount }}">
-                <input type="hidden" name="charsCount" value="{{ $charsCount }}">
-                <input type="hidden" name="tablesCount" value="{{ $tablesCount }}">
-                <input type="hidden" name="imagesCount" value="{{ $imagesCount }}">
-                @foreach($actionableErrors as $index => $error)
-                    <input type="hidden" name="actionableErrors[{{ $index }}][type]" value="{{ $error['type'] }}">
-                    <input type="hidden" name="actionableErrors[{{ $index }}][message]" value="{{ $error['message'] }}">
-                    <input type="hidden" name="actionableErrors[{{ $index }}][location]" value="{{ $error['location'] }}">
-                    <input type="hidden" name="actionableErrors[{{ $index }}][context]" value="{{ $error['context'] }}">
-                @endforeach
+                {{-- Дані звіту беруться із сесії на сервері (див. NormControlController::downloadPdf) --}}
 
                 <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 px-8 rounded-2xl shadow-lg transition-all flex items-center gap-3">
                     <span>📥 Завантажити повний звіт у PDF</span>

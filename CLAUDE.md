@@ -1,0 +1,50 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## Project
+
+Acadoc is an academic document platform for a Ukrainian college (Konotop), used as a team/student project. It runs on Laravel 12 (PHP 8.2+), with Filament 5 as the admin panel. The UI text, comments, validation messages and commit messages are in **Ukrainian**. Keep writing new user-facing strings and commit messages in Ukrainian.
+
+## Commands
+
+- `composer setup`: full first-time setup (install, `.env`, key, migrate, npm build)
+- `composer dev`: runs `artisan serve`, the queue listener, `pail` logs and Vite all at once
+- `php artisan serve`: just the web server (the app lives under XAMPP at `G:\xampp\htdocs\acadoc`)
+- `php artisan migrate --seed`: creates the tables and seeds `test@example.com`
+- `composer test` or `php artisan test`: runs all tests
+- `php artisan test --filter=TestName`: runs a single test
+- `vendor/bin/pint`: code style (Laravel Pint)
+- `php artisan shield:generate --all`: regenerates Filament Shield permissions and policies after you add a Filament resource
+
+Local dev uses MySQL from XAMPP (`DB_DATABASE=acadoc`, user `root`, no password; see `INSTRUCTIONS.md`), even though `.env.example` defaults to sqlite. Tests run on in-memory sqlite (`phpunit.xml`). The PHP extensions `intl` and `zip` must be enabled in php.ini. `zip` is required by the norm-control checker.
+
+## Architecture
+
+There are two separate UIs that share the same `users` table and session auth:
+
+1. **Public frontend** (`routes/web.php`, Blade views in `resources/views/`, layout `layouts/app.blade.php`)
+   - The layout loads Tailwind and Alpine **from CDN**. It does not use the Vite build, which only covers `resources/css|js/app.*`.
+   - Login is a modal on `/` that posts to `FrontendAuthController`. The named route `login` just redirects to `/`, so the `auth` middleware sends guests back to the home page.
+   - **Norm-control** (`NormControlController`, behind `auth`) checks a student's `.docx` against ДСТУ 3008:2015 / ЄСКД and the college's rules. It opens the file with `ZipArchive` and runs regex checks over the raw OOXML, split into paragraphs with `preg_split('/(?=<w:p[ >])/')`. Text boxes (`w:txbxContent`, e.g. the ЄСКД frame) are stripped first, because their inner paragraphs would otherwise split the paragraph they are anchored in. Units: twips (÷56.7 → mm), font size in half-points (28 = 14pt), line spacing in 240ths when `lineRule=auto` (360 = 1.5).
+   - Helper classes live in `app/Services/NormControl/`:
+     - `WordStyles` resolves *effective* paragraph and run properties: direct formatting → character/paragraph style → `basedOn` chain → `docDefaults`, including theme fonts from `theme1.xml`. Always use it instead of regexing direct properties, since most formatting comes from styles.
+     - `PageSetupChecks` checks every `<w:sectPr>` (A4, margins, page numbering via header/footer rels).
+     - `CitationChecks` matches `[n]` citations against the reference list.
+     - `TitlePageInfo` parses the title page (student, topic, group, year…).
+   - Body text checks apply only between `ВСТУП` and the reference list. Tables, captions, TOC entries and monospace-font code listings are skipped. Headings are recognised case-insensitively, and `caps`/`smallCaps` effects are resolved through styles. Repeated body violations are grouped as 5 examples plus a summary row.
+   - Text extraction must use `<w:t(?:\s[^>]*)?>`. A plain `<w:t[^>]*>` also matches `<w:tab>`, `<w:tabs>` and `<w:tbl>`.
+   - Nothing is saved to the database. `process()` stores the computed `$report` array in the session (`norm_control_report`). `downloadPdf()` renders `norm-control/pdf_report.blade.php` from that array through dompdf, and `makeReportPdf()` adds the "Сторінка X з Y" footer via the canvas, because dompdf ignores CSS `counter(pages)`. New report data goes into `$report`, not into form fields.
+   - Tests in `tests/Feature/NormControlTest.php` build real `.docx` files in memory (`document()` helper with styles, sections, headers, theme). Use that helper for new rules.
+
+2. **Admin panel** (`/admin`, `app/Providers/Filament/AdminPanelProvider.php`)
+   - Resources are auto-discovered from `app/Filament/Resources/<Plural>/`. Each resource follows the Filament v4/v5 split layout: `XResource.php` plus `Pages/`, `Schemas/` (Form, Infolist), `Tables/` and `RelationManagers/`.
+   - Authorization uses **Filament Shield** on top of **spatie/laravel-permission** (`User` uses `HasRoles`). Permissions follow the `Action:Model` naming (e.g. `ViewAny:Role`), as in `app/Policies/RolePolicy.php`.
+   - `app/Filament/Imports/UserImporter.php` bulk-imports users from CSV. It matches `department` and `group` by name, assigns comma-separated `roles` in `afterSave`, and gives new users the default password `acadoc123!`. Imports run on the **database queue**, so a queue worker must be running (`composer dev` starts one).
+   - The language switcher (`bezhansalleh/filament-language-switch`) offers `uk` and `en` (`AppServiceProvider`). Labels for models and fields come from `lang/uk/models.php` through `__('models.*')`.
+
+Domain models: `Department` 1→N `Group`, and `User` belongs to both a `Department` and a `Group` (`department_id`, `group_id`).
+
+## Workflow (from INSTRUCTIONS.md)
+
+Never commit directly to `master`. Create a `feature/<task>` branch, push it, and open a PR for the teacher to review.
