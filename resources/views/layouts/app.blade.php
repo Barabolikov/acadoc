@@ -11,7 +11,7 @@
 <body class="bg-gray-50 text-gray-800 font-sans antialiased selection:bg-indigo-500 selection:text-white">
 <!-- Змінна isLoginOpen зберігає стан вікна: відкрите/закрите -->
 <!-- Якщо є помилки вводу, вікно автоматично залишиться відкритим після перезавантаження -->
-<div class="min-h-screen flex flex-col" x-data="{ isLoginOpen: {{ $errors->has('email') ? 'true' : 'false' }} }">
+<div class="min-h-screen flex flex-col" x-data="{ isLoginOpen: {{ $errors->has('email') ? 'true' : 'false' }}, isRegisterOpen: {{ $errors->register->any() ? 'true' : 'false' }} }">
 
     <!-- Шапка (Header) -->
     <header class="bg-white shadow-sm border-b border-gray-100 sticky top-0 z-50">
@@ -59,16 +59,23 @@
                         <button type="submit" class="text-gray-500 hover:text-red-500 font-bold transition">Вийти</button>
                     </form>
                 @else
-                    <!-- Кнопка Вхід (Для гостей) -->
+                    <!-- Кнопки Вхід і Реєстрація (для гостей) -->
+                    <button @click="isRegisterOpen = true" class="text-gray-700 px-3 sm:px-4 py-2 rounded-lg font-bold hover:text-indigo-600 transition">
+                        Реєстрація
+                    </button>
                     <button @click="isLoginOpen = true" class="bg-indigo-600 text-white px-5 py-2 rounded-lg font-bold hover:bg-indigo-700 transition shadow-sm">
                         Вхід
                     </button>
                 @endauth
 
-                <!-- Кнопка Адмін панелі (Завжди присутня справа) -->
-                <a href="/admin" class="bg-gray-100 text-gray-700 px-5 py-2 rounded-lg font-bold hover:bg-gray-200 border border-gray-200 transition flex items-center gap-2">
-                    Адмін панель
-                </a>
+                {{-- Адмін-панель доступна лише адміністратору (User::canAccessPanel) --}}
+                @auth
+                    @if (auth()->user()->canAccessPanel(\Filament\Facades\Filament::getPanel('admin')))
+                        <a href="/admin" class="bg-gray-100 text-gray-700 px-5 py-2 rounded-lg font-bold hover:bg-gray-200 border border-gray-200 transition flex items-center gap-2">
+                            Адмін панель
+                        </a>
+                    @endif
+                @endauth
             </nav>
         </div>
     </header>
@@ -119,6 +126,97 @@
             </form>
         </div>
     </div>
+
+    <!-- ВІКНО РЕЄСТРАЦІЇ -->
+    <div x-show="isRegisterOpen"
+         x-transition.opacity
+         class="fixed inset-0 z-[100] flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm overflow-y-auto py-8"
+         style="display: none;">
+        <div @click.away="isRegisterOpen = false"
+             x-transition.scale.origin.bottom
+             class="bg-white w-full max-w-md p-8 rounded-2xl shadow-2xl relative mx-4"
+             x-data="{ role: '{{ old('requested_role', 'student') }}' }">
+
+            <button @click="isRegisterOpen = false" class="absolute top-4 right-4 text-gray-400 hover:text-gray-800 text-2xl font-bold">&times;</button>
+
+            <h2 class="text-2xl font-bold text-gray-900 mb-2 text-center">Реєстрація</h2>
+            <p class="text-sm text-gray-500 text-center mb-6">Створіть обліковий запис, щоб перевіряти роботи на нормоконтроль</p>
+
+            @if ($errors->register->any())
+                <div class="mb-4 p-3 bg-red-50 text-red-600 rounded-lg text-sm">
+                    <ul class="list-disc pl-5 space-y-0.5">
+                        @foreach ($errors->register->all() as $error)
+                            <li>{{ $error }}</li>
+                        @endforeach
+                    </ul>
+                </div>
+            @endif
+
+            <form action="{{ route('frontend.register') }}" method="POST" class="space-y-4">
+                @csrf
+
+                <fieldset>
+                    <legend class="block text-sm font-medium text-gray-700 mb-2">Я —</legend>
+                    <div class="grid grid-cols-2 gap-3">
+                        @foreach (['student' => ['Студент', 'Перевіряю свої роботи'], 'teacher' => ['Викладач', 'Перевіряю роботи студентів']] as $value => [$title, $hint])
+                            <label class="cursor-pointer rounded-xl border-2 p-3 transition"
+                                   :class="role === '{{ $value }}' ? 'border-indigo-600 bg-indigo-50' : 'border-gray-200 hover:border-gray-300'">
+                                <input type="radio" name="requested_role" value="{{ $value }}" class="sr-only" x-model="role">
+                                <span class="block font-bold text-gray-900">{{ $title }}</span>
+                                <span class="block text-xs text-gray-500">{{ $hint }}</span>
+                            </label>
+                        @endforeach
+                    </div>
+                    <p x-show="role === 'teacher'" x-transition.opacity class="mt-2 text-xs text-amber-700 bg-amber-50 rounded-lg p-2" style="display: none;">
+                        Роль викладача підтверджує адміністратор. До підтвердження ви користуватиметеся сервісом як студент.
+                    </p>
+                </fieldset>
+
+                <div>
+                    <label for="reg-name" class="block text-sm font-medium text-gray-700 mb-1">Прізвище та ім'я</label>
+                    <input type="text" name="name" id="reg-name" required maxlength="255" value="{{ old('name') }}" autocomplete="name"
+                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none">
+                </div>
+                <div>
+                    <label for="reg-email" class="block text-sm font-medium text-gray-700 mb-1">Електронна пошта</label>
+                    <input type="email" name="email" id="reg-email" required value="{{ $errors->register->any() ? old('email') : '' }}" autocomplete="email"
+                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none">
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                        <label for="reg-password" class="block text-sm font-medium text-gray-700 mb-1">Пароль</label>
+                        <input type="password" name="password" id="reg-password" required minlength="8" autocomplete="new-password"
+                               class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none">
+                    </div>
+                    <div>
+                        <label for="reg-password2" class="block text-sm font-medium text-gray-700 mb-1">Повторіть пароль</label>
+                        <input type="password" name="password_confirmation" id="reg-password2" required minlength="8" autocomplete="new-password"
+                               class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none">
+                    </div>
+                </div>
+
+                <button type="submit" class="w-full bg-indigo-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-indigo-700 transition">
+                    Зареєструватися
+                </button>
+                <p class="text-center text-sm text-gray-500">
+                    Вже маєте обліковий запис?
+                    <button type="button" @click="isRegisterOpen = false; isLoginOpen = true" class="font-semibold text-indigo-600 hover:underline">Увійти</button>
+                </p>
+            </form>
+        </div>
+    </div>
+
+    {{-- Повідомлення після реєстрації тощо --}}
+    @if (session('status'))
+        <div x-data="{ show: true }" x-show="show" x-init="setTimeout(() => show = false, 8000)" x-transition.opacity
+             class="fixed top-20 inset-x-0 z-[90] flex justify-center px-4">
+            <div class="max-w-xl w-full bg-emerald-600 text-white rounded-xl shadow-lg px-5 py-4 flex items-start gap-3">
+                <svg class="w-6 h-6 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                <p class="text-sm font-medium flex-1">{{ session('status') }}</p>
+                <button @click="show = false" class="text-white/80 hover:text-white text-xl leading-none">&times;</button>
+            </div>
+        </div>
+    @endif
 
     <!-- Контент сторінки -->
     <main class="flex-grow">

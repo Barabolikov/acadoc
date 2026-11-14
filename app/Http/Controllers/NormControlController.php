@@ -6,7 +6,11 @@ use App\Services\NormControl\CitationChecks;
 use App\Services\NormControl\PageSetupChecks;
 use App\Services\NormControl\TitlePageInfo;
 use App\Services\NormControl\WordStyles;
-use Barryvdh\DomPDF\Facade\Pdf;
+use App\Models\User;
+use App\Services\NormControl\ReportDocx;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
 use ZipArchive;
 
@@ -45,9 +49,12 @@ class NormControlController extends Controller
         return $font !== null && (bool) preg_match('/mono|code|courier|consolas|menlo|monaco|lucida console/i', $font);
     }
 
-    public function index()
+    public function index(Request $request)
     {
-        return view('norm-control.index');
+        return view('norm-control.index', [
+            'remainingChecks' => $request->user()->remainingChecksToday(),
+            'dailyLimit' => User::STUDENT_DAILY_CHECKS,
+        ]);
     }
 
     public function process(Request $request)
@@ -60,7 +67,52 @@ class NormControlController extends Controller
             'document.max' => 'Розмір файлу не повинен перевищувати 10 МБ.'
         ]);
 
+        $user = $request->user();
         $file = $request->file('document');
+
+        // Резервуємо перевірку ДО аналізу, заблокувавши рядок користувача,
+        // щоб дві одночасні відправки не обійшли денний ліміт студента.
+        $check = DB::transaction(function () use ($user, $file) {
+            User::whereKey($user->id)->lockForUpdate()->first();
+            if ($user->remainingChecksToday() === 0) {
+                return null;
+            }
+
+            return $user->normControlChecks()->create([
+                'file_name' => mb_substr($file->getClientOriginalName(), 0, 255),
+                'file_hash' => hash_file('sha256', $file->getRealPath()),
+            ]);
+        });
+
+        if (!$check) {
+            return back()->withErrors(['document' => self::limitMessage()]);
+        }
+
+        try {
+            $response = $this->analyze($request, $file);
+        } catch (\Throwable $e) {
+            $check->delete(); // збій перевірки не забирає спробу
+            throw $e;
+        }
+
+        if ($response instanceof RedirectResponse) {
+            $check->delete(); // пошкоджений файл не забирає спробу
+            return $response;
+        }
+
+        $check->update(['errors_count' => count(session('norm_control_report.errors', []))]);
+
+        return $response;
+    }
+
+    public static function limitMessage(): string
+    {
+        return 'Студенти можуть перевіряти ' . User::STUDENT_DAILY_CHECKS . ' документ на день. '
+            . 'Ліміт на сьогодні вичерпано — наступна перевірка буде доступна завтра (з 00:00 за київським часом).';
+    }
+
+    private function analyze(Request $request, UploadedFile $file)
+    {
         $fileName = $file->getClientOriginalName();
         $tempPath = $file->getRealPath();
 
@@ -430,7 +482,7 @@ class NormControlController extends Controller
                 'errors' => $actionableErrors,
             ];
 
-            // Звіт PDF будується з цих даних на сервері, а не з полів форми, які можна підмінити
+            // Звіт (DOCX) будується з цих даних на сервері, а не з полів форми, які можна підмінити
             session(['norm_control_report' => $report]);
 
             return view('norm-control.results', [
@@ -453,7 +505,8 @@ class NormControlController extends Controller
         }
         return back()->withErrors(['document' => 'Помилка архіву.']);
     }
-    public function downloadPdf(Request $request)
+    /** Звіт у форматі Word, зібраний з даних останньої перевірки в сесії */
+    public function downloadReport(Request $request)
     {
         $report = $request->session()->get('norm_control_report');
         if (!$report) {
@@ -462,26 +515,14 @@ class NormControlController extends Controller
         }
 
         $surname = $report['titlePage']['student'] ? strtok($report['titlePage']['student'], ' ') . '-' : '';
+        $docx = ReportDocx::build($report);
 
-        return self::makeReportPdf($report)->download("normcontrol-report-{$surname}{$report['number']}.pdf");
-    }
-
-    /** PDF-звіт із номерами «Сторінка X з Y» у колонтитулі (CSS counter(pages) dompdf не підтримує). */
-    public static function makeReportPdf(array $report): \Barryvdh\DomPDF\PDF
-    {
-        $pdf = Pdf::loadView('norm-control.pdf_report', ['report' => $report])->setPaper('a4');
-        $pdf->render();
-
-        $dompdf = $pdf->getDomPDF();
-        $canvas = $dompdf->getCanvas();
-        $font = $dompdf->getFontMetrics()->getFont('DejaVu Sans');
-        $size = 7.5;
-        $text = 'Сторінка {PAGE_NUM} з {PAGE_COUNT}';
-        // Праве поле 18 мм; ширину рахуємо для найдовшого випадку (двоцифрові номери)
-        $width = $dompdf->getFontMetrics()->getTextWidth('Сторінка 00 з 00', $font, $size);
-        $mm = 72 / 25.4;
-        $canvas->page_text($canvas->get_width() - 18 * $mm - $width, $canvas->get_height() - 20 * $mm + 8 * $mm, $text, $font, $size, [0.42, 0.45, 0.5]);
-
-        return $pdf;
+        return response()->streamDownload(
+            function () use ($docx) {
+                echo $docx;
+            },
+            "Звіт-нормоконтролю-{$surname}{$report['number']}.docx",
+            ['Content-Type' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'],
+        );
     }
 }

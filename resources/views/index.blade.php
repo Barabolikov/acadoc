@@ -68,9 +68,10 @@
         ];
 
         $faq = [
-            ['q' => 'Хто може користуватися сервісом?', 'a' => 'Сервіс корпоративний: доступ мають лише студенти й викладачі навчального закладу. Обліковий запис створює адміністратор, тому окремої реєстрації немає.'],
+            ['q' => 'Хто може користуватися сервісом?', 'a' => 'Студенти й викладачі навчального закладу. Зареєструйтеся, обравши «Студент» або «Викладач». Нові облікові записи отримують права студента, а роль викладача підтверджує адміністратор.'],
+            ['q' => 'Скільки робіт можна перевірити?', 'a' => 'Студенти можуть перевіряти 1 документ на день; ліміт оновлюється о 00:00 за київським часом. Тож завантажуйте остаточну версію роботи, виправивши все, що можна. Для викладачів обмежень немає.'],
             ['q' => 'Які файли можна перевірити?', 'a' => 'Документи Microsoft Word у форматі .docx розміром до 10 МБ. Якщо робота в .doc або .pdf, відкрийте її у Word і збережіть як .docx.'],
-            ['q' => 'Чи зберігається моя робота на сервері?', 'a' => 'Ні. Файл аналізується одразу після завантаження й не зберігається в базі даних. Результат бачите лише ви, а за бажанням можете завантажити його як PDF-звіт.'],
+            ['q' => 'Чи зберігається моя робота на сервері?', 'a' => 'Ні. Файл аналізується одразу після завантаження й не зберігається: у журналі лишаються тільки назва файлу, його контрольна сума й кількість зауважень. Результат бачите лише ви, а за бажанням можете завантажити звіт у форматі Word (.docx).'],
             ['q' => 'Чи замінює перевірка нормоконтролера?', 'a' => 'Ні, вона допомагає підготуватися до нормоконтролю. Сервіс знаходить типові помилки оформлення до того, як ви здасте роботу. Остаточне рішення ухвалює нормоконтролер або керівник.'],
             ['q' => 'Чому сервіс показує помилку, якої в мене немає?', 'a' => 'Перевірка спирається на внутрішню розмітку Word. Якщо форматування задано вручну, а не через стилі, програма може його не розпізнати. Використовуйте стилі «Звичайний» та «Заголовок 1–3», і результат буде точнішим.'],
         ];
@@ -101,9 +102,9 @@
 
                 <div class="flex flex-col sm:flex-row gap-3 mb-8">
                     @guest
-                        <button @click="isLoginOpen = true" class="inline-flex items-center justify-center gap-2 bg-indigo-600 text-white px-8 py-4 rounded-xl font-bold hover:bg-indigo-700 shadow-lg shadow-indigo-600/20 hover:shadow-xl transition transform hover:-translate-y-0.5">
+                        <button @click="isRegisterOpen = true" class="inline-flex items-center justify-center gap-2 bg-indigo-600 text-white px-8 py-4 rounded-xl font-bold hover:bg-indigo-700 shadow-lg shadow-indigo-600/20 hover:shadow-xl transition transform hover:-translate-y-0.5">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M16 8l-4-4-4 4M12 4v12"/></svg>
-                            Увійти й перевірити роботу
+                            Зареєструватися й перевірити роботу
                         </button>
                     @else
                         <a href="{{ route('norm-control.index') }}" class="inline-flex items-center justify-center gap-2 bg-indigo-600 text-white px-8 py-4 rounded-xl font-bold hover:bg-indigo-700 shadow-lg shadow-indigo-600/20 hover:shadow-xl transition transform hover:-translate-y-0.5">
@@ -117,7 +118,7 @@
                 </div>
 
                 <div class="flex flex-wrap gap-2">
-                    @foreach (['Поля та формат', 'Шрифт і інтервали', 'Заголовки', 'Структура роботи', 'Підписи', 'PDF-звіт'] as $badge)
+                    @foreach (['Поля та формат', 'Шрифт і інтервали', 'Заголовки', 'Структура роботи', 'Підписи', 'Звіт у Word'] as $badge)
                         <span class="inline-flex items-center gap-1.5 bg-white border border-gray-200 text-gray-700 text-sm font-medium px-3 py-1.5 rounded-full">
                             <svg class="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
                             {{ $badge }}
@@ -168,7 +169,7 @@
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
                             Структура роботи правильна
                         </span>
-                        <span class="text-indigo-600 font-semibold">PDF-звіт ↓</span>
+                        <span class="text-indigo-600 font-semibold">Звіт .docx ↓</span>
                     </div>
                 </div>
             </div>
@@ -264,10 +265,10 @@
 
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 @foreach ([
-                    ['Увійдіть у систему', 'Використайте логін і пароль, які видав адміністратор навчального закладу.'],
+                    ['Зареєструйтеся або увійдіть', 'Створіть обліковий запис студента чи викладача за кілька секунд.'],
                     ['Завантажте .docx', 'Відкрийте «Функції → Нормоконтроль» і оберіть файл роботи (до 10 МБ).'],
                     ['Отримайте звіт', 'Система розбере документ і покаже кожне зауваження: що не так, у якому розділі та в якому фрагменті тексту.'],
-                    ['Виправте й перевірте знову', 'Внесіть правки у Word, повторіть перевірку й завантажте PDF-звіт для керівника.'],
+                    ['Виправте й перевірте знову', 'Внесіть правки у Word, повторіть перевірку й завантажте звіт у Word для керівника.'],
                 ] as $i => [$title, $text])
                     <div class="relative bg-white/5 border border-white/10 rounded-2xl p-7 hover:bg-white/10 transition">
                         <span class="block text-5xl font-black text-transparent bg-clip-text bg-gradient-to-br from-indigo-400 to-sky-300 mb-4">{{ $i + 1 }}</span>
@@ -295,7 +296,7 @@
                 <h3 class="text-2xl sm:text-3xl font-extrabold text-gray-900 mb-4">Здавайте роботу з першого разу</h3>
                 <p class="text-gray-600 mb-6">Знайдіть помилки оформлення самостійно, до походу на нормоконтроль, і заощадьте час на повторних перевірках.</p>
                 <ul class="space-y-3 text-gray-700">
-                    @foreach (['Конкретні зауваження з місцем у тексті', 'Перевірка необмежену кількість разів', 'PDF-звіт для керівника роботи'] as $item)
+                    @foreach (['Конкретні зауваження з місцем у тексті', 'Одна перевірка щодня', 'Звіт у Word для керівника роботи'] as $item)
                         <li class="flex gap-3"><svg class="w-6 h-6 shrink-0 text-indigo-600" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>{{ $item }}</li>
                     @endforeach
                 </ul>
@@ -345,7 +346,10 @@
                 <p class="text-indigo-100 text-lg">Знайдіть помилки оформлення до того, як їх знайде нормоконтролер.</p>
             </div>
             @guest
-                <button @click="isLoginOpen = true" class="shrink-0 bg-white text-indigo-700 px-8 py-4 rounded-xl font-bold hover:bg-indigo-50 shadow-lg transition">Увійти в систему</button>
+                <div class="shrink-0 flex flex-col sm:flex-row gap-3">
+                    <button @click="isRegisterOpen = true" class="bg-white text-indigo-700 px-8 py-4 rounded-xl font-bold hover:bg-indigo-50 shadow-lg transition">Зареєструватися</button>
+                    <button @click="isLoginOpen = true" class="border-2 border-white/70 text-white px-8 py-4 rounded-xl font-bold hover:bg-white/10 transition">Увійти</button>
+                </div>
             @else
                 <a href="{{ route('norm-control.index') }}" class="shrink-0 bg-white text-indigo-700 px-8 py-4 rounded-xl font-bold hover:bg-indigo-50 shadow-lg transition">Перевірити роботу</a>
             @endguest

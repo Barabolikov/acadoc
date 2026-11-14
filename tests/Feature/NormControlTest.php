@@ -5,6 +5,8 @@ namespace Tests\Feature;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Carbon;
+use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 use ZipArchive;
 
@@ -407,17 +409,37 @@ class NormControlTest extends TestCase
         $this->assertSame(['checked' => 1, 'ok' => 1, 'percent' => 100], $report['metrics']['body']);
     }
 
-    public function test_pdf_report_is_built_from_session(): void
+    public function test_docx_report_is_built_from_session(): void
     {
-        $this->check($this->document([$this->p(self::BODY)]));
+        // Текст із символами, які треба екранувати в XML звіту
+        $this->check($this->document([$this->p('Порівняння A &amp; B: значення &lt;x&gt; має бути «коректним» у тексті', '<w:jc w:val="left"/>')]));
 
         $response = $this->post(route('norm-control.download'));
+        $response->assertOk()->assertHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
+        $this->assertStringContainsString('.docx', $response->headers->get('Content-Disposition'));
 
-        $response->assertOk()->assertHeader('Content-Type', 'application/pdf');
-        $this->assertStringStartsWith('%PDF', $response->getContent());
+        $path = tempnam(sys_get_temp_dir(), 'report');
+        file_put_contents($path, $response->streamedContent());
+        $zip = new ZipArchive;
+        $this->assertTrue($zip->open($path));
+
+        // Усі частини — коректний XML
+        foreach (['[Content_Types].xml', '_rels/.rels', 'word/_rels/document.xml.rels', 'word/document.xml', 'word/styles.xml', 'word/settings.xml', 'word/footer1.xml', 'docProps/core.xml'] as $part) {
+            $xml = $zip->getFromName($part);
+            $this->assertNotFalse($xml, "Немає частини $part");
+            $this->assertTrue((new \DOMDocument)->loadXML($xml), "Некоректний XML у $part");
+        }
+
+        $text = html_entity_decode(strip_tags(str_replace('</w:p>', "\n", $zip->getFromName('word/document.xml'))));
+        foreach (['Звіт нормоконтролю роботи', '1. Робота', '2. Показники', '3. Зауваження', '4. Рішення нормоконтролера',
+            'Вирівнювання по лівому краю (треба по ширині)', 'Порівняння A & B: значення <x>', 'Підпис нормоконтролера та дата'] as $expected) {
+            $this->assertStringContainsString($expected, $text);
+        }
+        $this->assertStringContainsString('NUMPAGES', $zip->getFromName('word/footer1.xml'));
+        $zip->close();
     }
 
-    public function test_pdf_report_without_check_redirects(): void
+    public function test_report_without_check_redirects(): void
     {
         $this->actingAs(User::factory()->create())
             ->post(route('norm-control.download'))
@@ -425,13 +447,95 @@ class NormControlTest extends TestCase
             ->assertSessionHasErrors('document');
     }
 
-    public function test_pdf_report_view_renders_sections(): void
+    public function test_results_page_has_report_note_and_docx_button(): void
     {
-        $this->check($this->document([$this->p(self::BODY, '<w:jc w:val="left"/>')]));
-        $html = view('norm-control.pdf_report', ['report' => session('norm_control_report')])->render();
+        $this->check($this->document([$this->p(self::BODY)]))
+            ->assertSee('Отриманий файл звіту слід надіслати керівнику проєкту.')
+            ->assertSee('Завантажити звіт (.docx)')
+            ->assertDontSee('Наразі це базова перевірка');
+    }
 
-        foreach (['Звіт нормоконтролю роботи', '1. Робота', '2. Показники', '3. Зауваження', '4. Рішення нормоконтролера', 'Основний текст', 'Вирівнювання по лівому краю (треба по ширині)', 'Підпис нормоконтролера та дата'] as $text) {
-            $this->assertStringContainsString($text, $html);
+    // --- Денний ліміт для студентів ---
+
+    private function userWithRole(string $role): User
+    {
+        $user = User::factory()->create();
+        $user->assignRole(Role::findOrCreate($role, 'web'));
+
+        return $user;
+    }
+
+    private function upload(User $user, string $docxPath)
+    {
+        return $this->actingAs($user)->post(route('norm-control.process'), [
+            'document' => new UploadedFile($docxPath, 'robota.docx', null, null, true),
+        ]);
+    }
+
+    public function test_student_can_check_one_document_per_day(): void
+    {
+        $student = $this->userWithRole(User::ROLE_STUDENT);
+        $doc = $this->document([$this->p(self::BODY)]);
+
+        $this->upload($student, $doc)->assertOk()->assertViewHas('report');
+        $this->assertSame(0, $student->remainingChecksToday());
+
+        $this->from(route('norm-control.index'))->upload($student, $doc)
+            ->assertRedirect(route('norm-control.index'))
+            ->assertSessionHasErrors('document');
+        $this->assertSame(1, $student->normControlChecks()->count());
+
+        $this->actingAs($student)->get(route('norm-control.index'))
+            ->assertSee('Ліміт перевірок на сьогодні вичерпано');
+    }
+
+    public function test_limit_resets_at_midnight_kyiv_time(): void
+    {
+        $student = $this->userWithRole(User::ROLE_STUDENT);
+        $doc = $this->document([$this->p(self::BODY)]);
+
+        // 23:30 за Києвом (21:30 UTC взимку) — перевірка «сьогодні»
+        $this->travelTo(Carbon::parse('2026-11-15 23:30', User::LIMIT_TIMEZONE));
+        $this->upload($student, $doc)->assertOk();
+        $this->assertSame(0, $student->remainingChecksToday());
+
+        // 00:10 наступного дня за Києвом — новий ліміт, хоча за UTC ще 15-те число
+        $this->travelTo(Carbon::parse('2026-11-16 00:10', User::LIMIT_TIMEZONE));
+        $this->assertSame(1, $student->remainingChecksToday());
+        $this->upload($student, $doc)->assertOk();
+    }
+
+    public function test_broken_file_does_not_use_up_the_limit(): void
+    {
+        $student = $this->userWithRole(User::ROLE_STUDENT);
+
+        // Справжній zip, але без word/document.xml
+        $broken = tempnam(sys_get_temp_dir(), 'docx');
+        $zip = new ZipArchive;
+        $zip->open($broken, ZipArchive::OVERWRITE);
+        $zip->addFromString('[Content_Types].xml', '<?xml version="1.0"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>');
+        $zip->addFromString('word/styles.xml', '<x/>');
+        $zip->close();
+
+        $this->from(route('norm-control.index'))->upload($student, $broken)->assertSessionHasErrors('document');
+
+        $this->assertSame(0, $student->normControlChecks()->count());
+        $this->assertSame(1, $student->remainingChecksToday());
+    }
+
+    public function test_teacher_and_admin_have_no_limit(): void
+    {
+        $doc = $this->document([$this->p(self::BODY)]);
+
+        foreach ([User::ROLE_TEACHER, User::ROLE_ADMIN] as $role) {
+            $user = $this->userWithRole($role);
+            // Навіть якщо в нього лишилася роль студента
+            $user->assignRole(Role::findOrCreate(User::ROLE_STUDENT, 'web'));
+
+            $this->assertNull($user->remainingChecksToday());
+            $this->upload($user, $doc)->assertOk();
+            $this->upload($user, $doc)->assertOk();
+            $this->assertSame(2, $user->normControlChecks()->count());
         }
     }
 

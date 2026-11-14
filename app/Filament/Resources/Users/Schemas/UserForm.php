@@ -2,7 +2,8 @@
 
 namespace App\Filament\Resources\Users\Schemas;
 
-use Filament\Forms\Components\DateTimePicker;
+use App\Models\User;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Schema;
 
@@ -12,36 +13,41 @@ class UserForm
     {
         return $schema
             ->components([
-                \Filament\Forms\Components\TextInput::make('name')
+                TextInput::make('name')
                     ->label('ПІБ')
                     ->required()
                     ->maxLength(255),
 
-                \Filament\Forms\Components\TextInput::make('email')
+                TextInput::make('email')
                     ->label('Email address')
                     ->email()
                     ->required()
                     ->maxLength(255),
 
-                \Filament\Forms\Components\TextInput::make('password')
+                TextInput::make('password')
                     ->label('Пароль')
                     ->password()
                     ->dehydrated(fn ($state) => filled($state)) // Зберігає пароль тільки якщо його змінили
                     ->required(fn (string $context): bool => $context === 'create'), // Вимагає пароль тільки при створенні нового користувача
 
-                \Filament\Forms\Components\Select::make('roles')
+                Select::make('roles')
                     ->label('Роль у системі')
                     ->relationship('roles', 'name')
                     ->multiple() // Дозволяє вибрати кілька ролей
-                    ->preload(),
+                    ->preload()
+                    // Ролі змінює лише адміністратор (інакше будь-хто з правом Update:User міг би підвищити собі роль)
+                    ->visible(fn (): bool => (bool) auth()->user()?->hasRole(User::ROLE_ADMIN))
+                    ->helperText(fn (?User $record): ?string => $record?->requested_role === 'teacher' && ! $record->hasRole(User::ROLE_TEACHER)
+                        ? 'Під час реєстрації користувач обрав «Викладач» — заявка очікує підтвердження.'
+                        : null),
 
-                \Filament\Forms\Components\Select::make('department_id')
+                Select::make('department_id')
                     ->label('Кафедра (Для співробітників)')
                     ->relationship('department', 'name')
                     ->searchable()
                     ->preload(),
 
-                \Filament\Forms\Components\Select::make('group_id')
+                Select::make('group_id')
                     ->label('Група (Для студентів)')
                     ->relationship('group', 'name')
                     ->searchable()
