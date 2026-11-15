@@ -46,8 +46,38 @@ class MonobankSetup extends Command
                 return self::FAILURE;
             }
             $url = route('payments.monobank.webhook', ['secret' => $secret]);
-            MonobankJar::setWebhook($url);
-            $this->info("Вебхук зареєстровано: {$url}");
+            $shown = str_replace($secret, '***', $url);
+            $this->line("Адреса вебхука: {$shown}");
+
+            $host = parse_url($url, PHP_URL_HOST);
+            if (! str_starts_with($url, 'https://') || in_array($host, ['localhost', '127.0.0.1'], true)) {
+                $this->error('APP_URL у .env має бути публічною HTTPS-адресою сайту (напр. https://acadoc.example.ua), а не '.config('app.url').'.');
+                $this->line('Після зміни: php artisan config:clear (або config:cache) і запустіть команду ще раз.');
+
+                return self::FAILURE;
+            }
+
+            try {
+                $check = \Illuminate\Support\Facades\Http::timeout(15)->get($url);
+                if (! $check->successful()) {
+                    $this->error("Сайт відповідає на адресу вебхука кодом {$check->status()}, а monobank потрібен 200.");
+                    $this->line('Перевірте: php artisan route:clear, чи оновлено код на сервері, чи веб-сервер відкриває Laravel (public/) для цього домену.');
+
+                    return self::FAILURE;
+                }
+            } catch (\Throwable $e) {
+                $this->warn('Не вдалося відкрити адресу з самого сервера ('.$e->getMessage().'). Пробуємо зареєструвати все одно…');
+            }
+
+            try {
+                MonobankJar::setWebhook($url);
+            } catch (\Illuminate\Http\Client\RequestException $e) {
+                $this->error('monobank відхилив вебхук: '.$e->response->body());
+                $this->line('monobank робить GET-запит на цю адресу і чекає 200 протягом 5 с. Відкрийте адресу в браузері (з вашим секретом замість ***) — має з’явитися «ok». Потрібен дійсний SSL-сертифікат.');
+
+                return self::FAILURE;
+            }
+            $this->info("Вебхук зареєстровано: {$shown}");
         }
 
         return self::SUCCESS;
