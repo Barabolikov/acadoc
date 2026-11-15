@@ -223,17 +223,10 @@
                     <input type="email" name="email" id="reg-email" required value="{{ $errors->register->any() ? old('email') : '' }}" autocomplete="email"
                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none">
                 </div>
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                        <label for="reg-password" class="block text-sm font-medium text-gray-700 mb-1">Пароль</label>
-                        <input type="password" name="password" id="reg-password" required minlength="8" autocomplete="new-password"
-                               class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none">
-                    </div>
-                    <div>
-                        <label for="reg-password2" class="block text-sm font-medium text-gray-700 mb-1">Повторіть пароль</label>
-                        <input type="password" name="password_confirmation" id="reg-password2" required minlength="8" autocomplete="new-password"
-                               class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none">
-                    </div>
+                <div>
+                    <label for="reg-password" class="block text-sm font-medium text-gray-700 mb-1">Пароль <span class="text-gray-400 font-normal">(щонайменше 5 символів)</span></label>
+                    <input type="password" name="password" id="reg-password" required minlength="5" autocomplete="new-password"
+                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none">
                 </div>
 
                 <x-turnstile bag="register" />

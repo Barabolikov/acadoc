@@ -6,7 +6,6 @@ use App\Models\User;
 use App\Rules\Turnstile;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Validation\Rules\Password;
 use Spatie\Permission\Models\Role;
 
 class FrontendAuthController extends Controller
@@ -45,7 +44,7 @@ class FrontendAuthController extends Controller
         $data = $request->validateWithBag('register', [
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
-            'password' => ['required', 'confirmed', Password::min(8)],
+            'password' => ['required', 'string', 'min:5'],
             'requested_role' => ['required', 'in:student,teacher'],
             Turnstile::FIELD => ['required', new Turnstile],
         ], [
@@ -55,8 +54,7 @@ class FrontendAuthController extends Controller
             'email.email' => 'Електронна пошта має неправильний формат.',
             'email.unique' => 'Користувач з такою поштою вже зареєстрований.',
             'password.required' => 'Вкажіть пароль.',
-            'password.confirmed' => 'Паролі не збігаються.',
-            'password.min' => 'Пароль має містити щонайменше 8 символів.',
+            'password.min' => 'Пароль має містити щонайменше 5 символів.',
             'requested_role.required' => 'Оберіть, хто ви: студент чи викладач.',
             'requested_role.in' => 'Оберіть, хто ви: студент чи викладач.',
         ]);
