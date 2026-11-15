@@ -20,7 +20,6 @@ class RegistrationTest extends TestCase
             'name' => 'Петренко Іван',
             'email' => 'petrenko@example.com',
             'password' => 'sekret-123',
-            'password_confirmation' => 'sekret-123',
             'requested_role' => 'student',
             ...self::CAPTCHA,
         ]);
@@ -58,9 +57,15 @@ class RegistrationTest extends TestCase
     {
         User::factory()->create(['email' => 'petrenko@example.com']);
 
-        $this->register(['password_confirmation' => 'other-pass'])
+        $this->register(['password' => 'abcd'])
             ->assertSessionHasErrorsIn('register', ['email', 'password']);
         $this->assertGuest();
+    }
+
+    public function test_five_character_password_is_enough(): void
+    {
+        $this->register(['password' => '12345'])->assertSessionHasNoErrors();
+        $this->assertAuthenticated();
     }
 
     public function test_registration_modal_is_on_home_page(): void
