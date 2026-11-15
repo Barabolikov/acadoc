@@ -26,29 +26,60 @@
             <p class="text-sm font-semibold text-indigo-600 uppercase tracking-wide mb-1">Acadoc</p>
             <h1 class="text-3xl font-extrabold text-gray-900 mb-2">Правила сервісу</h1>
             <p class="text-gray-600">
-                Правила користування сервісом автоматичного нормоконтролю Acadoc для студентів і викладачів
-                ВСП «Конотопський індустріально-педагогічний фаховий коледж СумДУ». Користуючись сервісом, ви погоджуєтеся з цими правилами.
+                Правила користування сервісом автоматичного нормоконтролю Acadoc для студентів і викладачів.<br> Користуючись сервісом, ви погоджуєтеся з цими правилами.
             </p>
         </div>
 
         {{-- Коротко --}}
-        <div class="grid sm:grid-cols-3 gap-3 mb-6">
-            <div class="rounded-xl border border-indigo-100 bg-indigo-50 p-4">
-                <p class="text-2xl mb-1">📄</p>
-                <p class="font-bold text-gray-900">Лише .docx до 5 МБ</p>
-                <p class="text-sm text-gray-600">Остаточна версія вашої курсової чи дипломної роботи.</p>
-            </div>
-            <div class="rounded-xl border border-amber-100 bg-amber-50 p-4">
-                <p class="text-2xl mb-1">⏱️</p>
-                <p class="font-bold text-gray-900">Студент — {{ \App\Models\User::STUDENT_DAILY_CHECKS }} перевірка на день</p>
-                <p class="text-sm text-gray-600">Викладач і «Преміум» — без обмежень.</p>
-            </div>
-            <div class="rounded-xl border border-emerald-100 bg-emerald-50 p-4">
-                <p class="text-2xl mb-1">🔒</p>
-                <p class="font-bold text-gray-900">Файли не зберігаються</p>
-                <p class="text-sm text-gray-600">Лише назва, контрольна сума та кількість зауважень.</p>
-            </div>
+        @php
+            $plans = [
+                [
+                    'title' => 'Звичайний користувач', 'note' => 'Безкоштовно після реєстрації',
+                    'box' => 'border-indigo-200 bg-white', 'head' => 'text-indigo-700', 'card' => 'border-indigo-100 bg-indigo-50',
+                    'items' => [
+                        ['📄', 'Лише .docx до '.\App\Http\Controllers\NormControlController::MAX_UPLOAD_MB.' МБ', 'Остаточна версія вашої курсової чи дипломної роботи.'],
+                        ['⏱️', \App\Models\User::STUDENT_DAILY_CHECKS.' перевірка на день', 'Ліміт оновлюється о 00:00 за київським часом. Викладачі — без обмежень.'],
+                        ['📋', 'Звіт і зауваження', 'Перелік помилок з порадами та звіт у Word для керівника; виправлення — вручну.'],
+                    ],
+                ],
+                [
+                    'title' => '⭐ Преміум', 'note' => \App\Models\Payment::priceUah().' грн на місяць або '.\App\Models\Payment::priceUah('lifetime').' грн назавжди',
+                    'box' => 'border-amber-300 bg-amber-50/40', 'head' => 'text-amber-700', 'card' => 'border-amber-200 bg-amber-50',
+                    'items' => [
+                        ['📦', 'Файли до '.\App\Http\Controllers\NormControlController::PREMIUM_MAX_UPLOAD_MB.' МБ', 'Для робіт з великою кількістю рисунків і схем.'],
+                        ['♾️', 'Безліміт перевірок', 'Перевіряйте роботу після кожного виправлення без денного обмеження.'],
+                        ['🛠️', 'Автовиправлення', 'Сервіс сам виправляє шрифт, інтервали, відступи, поля й заголовки.'],
+                    ],
+                ],
+            ];
+        @endphp
+        <div class="grid lg:grid-cols-2 gap-4 mb-3">
+            @foreach ($plans as $plan)
+                <div class="flex flex-col rounded-2xl border-2 {{ $plan['box'] }} p-4">
+                    <div class="flex flex-wrap items-baseline justify-between gap-x-3 mb-3">
+                        <p class="text-lg font-extrabold {{ $plan['head'] }}">{{ $plan['title'] }}</p>
+                        <p class="text-sm text-gray-500">{{ $plan['note'] }}</p>
+                    </div>
+                    <div class="space-y-2 mb-3">
+                        @foreach ($plan['items'] as [$icon, $title, $text])
+                            <div class="flex items-start gap-3 rounded-xl border {{ $plan['card'] }} p-3">
+                                <span class="text-2xl leading-none shrink-0">{{ $icon }}</span>
+                                <div>
+                                    <p class="font-bold text-gray-900">{{ $title }}</p>
+                                    <p class="text-sm text-gray-600">{{ $text }}</p>
+                                </div>
+                            </div>
+                        @endforeach
+                    </div>
+                    @if ($loop->last)
+                        <a href="{{ route('premium') }}" class="mt-auto block text-center bg-amber-500 hover:bg-amber-600 text-white font-bold py-2 rounded-xl transition">Отримати «Преміум»</a>
+                    @else
+                        <a href="{{ route('norm-control.index') }}" class="mt-auto block text-center bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 rounded-xl transition">Перевірити роботу безкоштовно</a>
+                    @endif
+                </div>
+            @endforeach
         </div>
+        <p class="mb-6 text-sm text-gray-500 text-center">🔒 Для всіх: завантажені файли не зберігаються — лише назва, контрольна сума та кількість зауважень.</p>
 
         <div class="grid lg:grid-cols-[230px_1fr] gap-6 items-start">
             {{-- Зміст --}}
