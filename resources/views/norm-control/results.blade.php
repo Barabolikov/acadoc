@@ -312,11 +312,11 @@
                         <span>🛠️ Виправити помилки</span>
                     </a>
                 @else
-                    <button type="button" disabled title="Доступно зі статусом «Преміум»"
-                            class="bg-gray-200 text-gray-500 font-bold py-4 px-8 rounded-2xl cursor-not-allowed flex items-center gap-3">
-                        <span>🛠️ Виправити помилки</span>
+                    <a href="{{ route('premium') }}" title="Доступно зі статусом «Преміум»"
+                       class="bg-gray-200 text-gray-500 hover:bg-gray-300 font-bold py-4 px-8 rounded-2xl flex items-center gap-3 transition">
+                        <span>🔒 Виправити помилки</span>
                         <span class="text-xs font-bold uppercase bg-amber-400 text-amber-950 rounded px-2 py-0.5">Преміум</span>
-                    </button>
+                    </a>
                 @endif
             </div>
 
@@ -347,8 +347,8 @@
             @else
                 <div class="max-w-xl w-full bg-amber-50 border border-amber-200 rounded-lg p-4 text-sm text-amber-900 text-center">
                     Сервіс може сам виправити шрифт, інтервали, відступи, поля й заголовки та дати посилання на виправлену роботу. Статус «Преміум» також знімає денний ліміт перевірок.
-                    Для отримання статусу «Преміум» зверніться до адміністратора
-                    <a href="https://t.me/Barabolikov" target="_blank" rel="noopener" class="font-bold underline">@Barabolikov</a> у Telegram.
+                    Статус «Преміум» можна отримати за символічну пожертву на розвиток проєкту: {{ \App\Models\Payment::priceUah() }} грн на місяць або {{ \App\Models\Payment::priceUah('lifetime') }} грн назавжди.
+                    <a href="{{ route('premium') }}" class="mt-2 block w-fit mx-auto bg-amber-500 hover:bg-amber-600 text-white font-bold py-2 px-5 rounded-lg transition">⭐ Отримати «Преміум» від {{ \App\Models\Payment::priceUah() }} грн</a>
                 </div>
             @endif
         </div>

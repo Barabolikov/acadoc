@@ -41,9 +41,16 @@ class UsersTable
                     ->color(fn (string $state): string => match ($state) {
                         User::ROLE_ADMIN => 'danger',
                         User::ROLE_TEACHER => 'success',
-                        User::ROLE_PREMIUM => 'warning',
                         default => 'gray',
                     }),
+                TextColumn::make('premium_until')
+                    ->label('Преміум')
+                    ->state(fn (User $record): ?string => $record->premiumStatusText()
+                        ?? ($record->premium_until ? 'закінчився '.$record->premium_until->timezone(User::LIMIT_TIMEZONE)->format('d.m.Y') : null))
+                    ->badge()
+                    ->color(fn (User $record): string => $record->premium_lifetime ? 'success' : ($record->premium_until?->isFuture() ? 'warning' : 'gray'))
+                    ->placeholder('—')
+                    ->sortable(),
                 TextColumn::make('requested_role')
                     ->label('Обрав при реєстрації')
                     ->badge()
@@ -117,27 +124,39 @@ class UsersTable
                             Notification::make()->title("{$record->name} тепер студент")->success()->send();
                         }),
                     Action::make('grantPremium')
-                        ->label('Надати «Преміум»')
+                        ->label(fn (User $record): string => $record->premium_until?->isFuture() ? 'Продовжити «Преміум» на місяць' : 'Надати «Преміум» на місяць')
+                        ->visible(fn (User $record): bool => ! $record->premium_lifetime)
                         ->icon('heroicon-o-star')
                         ->color('warning')
-                        ->visible(fn (User $record): bool => ! $record->hasRole(User::ROLE_PREMIUM))
                         ->requiresConfirmation()
-                        ->modalHeading(fn (User $record): string => "Надати {$record->name} статус «Преміум»?")
-                        ->modalDescription('Користувачу стане доступне автоматичне виправлення помилок у роботі.')
+                        ->modalHeading(fn (User $record): string => "«Преміум» для {$record->name} на місяць?")
+                        ->modalDescription('Місяць додається від сьогодні або від кінця чинного періоду.')
                         ->action(function (User $record): void {
-                            $record->assignRole(Role::findOrCreate(User::ROLE_PREMIUM, 'web'));
+                            $record->extendPremium();
 
-                            Notification::make()->title("{$record->name} отримав статус «Преміум»")->success()->send();
+                            Notification::make()->title("«Преміум» для {$record->name} діє до ".$record->premium_until->timezone(User::LIMIT_TIMEZONE)->format('d.m.Y'))->success()->send();
+                        }),
+                    Action::make('grantLifetimePremium')
+                        ->label('Надати «Преміум» назавжди')
+                        ->icon('heroicon-o-sparkles')
+                        ->color('success')
+                        ->visible(fn (User $record): bool => ! $record->premium_lifetime)
+                        ->requiresConfirmation()
+                        ->modalHeading(fn (User $record): string => "«Преміум» для {$record->name} назавжди?")
+                        ->action(function (User $record): void {
+                            $record->grantLifetimePremium();
+
+                            Notification::make()->title("{$record->name} отримав «Преміум» назавжди")->success()->send();
                         }),
                     Action::make('revokePremium')
                         ->label('Скасувати «Преміум»')
                         ->icon('heroicon-o-x-circle')
                         ->color('danger')
-                        ->visible(fn (User $record): bool => $record->hasRole(User::ROLE_PREMIUM))
+                        ->visible(fn (User $record): bool => $record->premium_lifetime || $record->premium_until?->isFuture())
                         ->requiresConfirmation()
                         ->modalHeading(fn (User $record): string => "Скасувати статус «Преміум» для {$record->name}?")
                         ->action(function (User $record): void {
-                            $record->removeRole(User::ROLE_PREMIUM);
+                            $record->revokePremium();
 
                             Notification::make()->title("Статус «Преміум» для {$record->name} скасовано")->success()->send();
                         }),

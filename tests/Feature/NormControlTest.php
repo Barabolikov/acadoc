@@ -464,7 +464,7 @@ class NormControlTest extends TestCase
 
         $this->check($this->document([$this->p(self::BODY)], ['sz' => 24, 'line' => 240, 'jc' => 'left', 'ind' => 0]))
             ->assertSee('Виправити помилки')
-            ->assertSee('Для отримання статусу «Преміум» зверніться до адміністратора', false)
+            ->assertSee('Отримати «Преміум» від 10 грн', false)
             ->assertSee('@Barabolikov')
             ->assertDontSee(route('norm-control.fixed'));
 
@@ -475,7 +475,7 @@ class NormControlTest extends TestCase
     public function test_premium_user_downloads_fixed_document(): void
     {
         Storage::fake('local');
-        $user = $this->userWithRole(User::ROLE_PREMIUM);
+        $user = $this->premiumUser();
         $sectPr = '<w:sectPr><w:pgSz w:w="12240" w:h="15840"/><w:pgMar w:top="1134" w:right="567" w:bottom="1134" w:left="1134"/></w:sectPr>';
         $doc = $this->document(
             [$this->p(self::BODY), $this->p(self::BODY, '', '<w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>'), $this->p('1.1 Загальні відомості.'), $this->p('ВИСНОВКИ', '<w:jc w:val="left"/>')],
@@ -507,7 +507,7 @@ class NormControlTest extends TestCase
     public function test_new_check_replaces_previous_fixed_document(): void
     {
         Storage::fake('local');
-        $user = $this->userWithRole(User::ROLE_PREMIUM);
+        $user = $this->premiumUser();
         $doc = $this->document([$this->p(self::BODY)], ['sz' => 24, 'line' => 240, 'jc' => 'left', 'ind' => 0]);
 
         $this->upload($user, $doc)->assertOk();
@@ -742,6 +742,15 @@ class NormControlTest extends TestCase
 
     // --- Денний ліміт для студентів ---
 
+    /** Студент з чинним «Преміум» */
+    private function premiumUser(): User
+    {
+        $user = $this->userWithRole(User::ROLE_STUDENT);
+        $user->extendPremium();
+
+        return $user;
+    }
+
     private function userWithRole(string $role): User
     {
         $user = User::factory()->create();
@@ -812,8 +821,8 @@ class NormControlTest extends TestCase
     {
         $doc = $this->document([$this->p(self::BODY)]);
 
-        foreach ([User::ROLE_TEACHER, User::ROLE_ADMIN, User::ROLE_PREMIUM] as $role) {
-            $user = $this->userWithRole($role);
+        foreach ([User::ROLE_TEACHER, User::ROLE_ADMIN, 'premium'] as $role) {
+            $user = $role === 'premium' ? $this->premiumUser() : $this->userWithRole($role);
             // Навіть якщо в нього лишилася роль студента
             $user->assignRole(Role::findOrCreate(User::ROLE_STUDENT, 'web'));
 

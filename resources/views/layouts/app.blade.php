@@ -57,6 +57,7 @@
                     <a href="/#checks" class="hover:text-indigo-600 transition">Що перевіряємо</a>
                     <a href="/#how" class="hover:text-indigo-600 transition">Як це працює</a>
                     <a href="/#faq" class="hover:text-indigo-600 transition">FAQ</a>
+                    <a href="{{ route('premium') }}" class="text-amber-600 font-semibold hover:text-amber-700 transition">⭐ Преміум</a>
                     <a href="{{ route('rules') }}" class="hover:text-indigo-600 transition">Правила</a>
                 </div>
 
@@ -188,7 +189,7 @@
 
                 <div class="p-3 rounded-lg bg-indigo-50 border border-indigo-100 text-xs text-indigo-900">
                         Студент може виконати {{ \App\Models\User::STUDENT_DAILY_CHECKS }} перевірку на день,
-                        <span class="font-bold">викладач і користувач зі статусом «Преміум» — необмежену кількість перевірок</span>.
+                        <span class="font-bold">викладач і користувач зі статусом «Преміум» — необмежену кількість перевірок</span>. «Преміум» можна отримати після реєстрації за символічну пожертву: {{ \App\Models\Payment::priceUah() }} грн на місяць або {{ \App\Models\Payment::priceUah('lifetime') }} грн назавжди.
                         Щоб отримати роль викладача, після реєстрації повідомте адміністратору
                         <a href="https://t.me/Barabolikov" target="_blank" rel="noopener" class="font-bold text-indigo-700 underline">@Barabolikov</a> у Telegram.
                 </div>
@@ -285,6 +286,7 @@
                     <li><a href="/#checks" class="hover:text-white transition">Що перевіряється</a></li>
                     <li><a href="/#how" class="hover:text-white transition">Як це працює</a></li>
                     <li><a href="/#faq" class="hover:text-white transition">Часті запитання</a></li>
+                    <li><a href="{{ route('premium') }}" class="hover:text-white transition">Преміум-акаунт</a></li>
                     <li><a href="{{ route('rules') }}" class="hover:text-white transition">Правила сервісу</a></li>
                     @auth
                         <li><a href="{{ route('norm-control.index') }}" class="hover:text-white transition">Нормоконтроль</a></li>

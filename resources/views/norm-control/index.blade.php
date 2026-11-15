@@ -17,10 +17,10 @@
                 <div class="text-sm">
                     @if ($remainingChecks > 0)
                         <p class="font-bold">Сьогодні доступно перевірок: {{ $remainingChecks }} з {{ $dailyLimit }}</p>
-                        <p>Студенти можуть перевіряти {{ $dailyLimit }} документ на день. Перед завантаженням переконайтеся, що обрали остаточну версію роботи. Статус «Преміум» знімає ліміт — зверніться до адміністратора <a href="https://t.me/Barabolikov" target="_blank" rel="noopener" class="font-bold underline">@Barabolikov</a> у Telegram.</p>
+                        <p>Студенти можуть перевіряти {{ $dailyLimit }} документ на день. Перед завантаженням переконайтеся, що обрали остаточну версію роботи. Статус <a href="{{ route('premium') }}" class="font-bold underline">«Преміум»</a> (пожертва {{ \App\Models\Payment::priceUah() }} грн/міс або {{ \App\Models\Payment::priceUah('lifetime') }} грн назавжди) знімає ліміт.</p>
                     @else
                         <p class="font-bold">Ліміт перевірок на сьогодні вичерпано</p>
-                        <p>Наступна перевірка буде доступна завтра з 00:00 (за київським часом). Звіт попередньої перевірки можна завантажити на сторінці результатів, доки ви не вийдете із системи. Безліміт перевірок дає статус «Преміум» — напишіть адміністратору <a href="https://t.me/Barabolikov" target="_blank" rel="noopener" class="font-bold underline">@Barabolikov</a> у Telegram.</p>
+                        <p>Наступна перевірка буде доступна завтра з 00:00 (за київським часом). Звіт попередньої перевірки можна завантажити на сторінці результатів, доки ви не вийдете із системи. Безліміт перевірок дає статус <a href="{{ route('premium') }}" class="font-bold underline">«Преміум»</a> за символічну пожертву: {{ \App\Models\Payment::priceUah() }} грн на місяць або {{ \App\Models\Payment::priceUah('lifetime') }} грн назавжди.</p>
                     @endif
                 </div>
             </div>
@@ -35,6 +35,9 @@
             <p class="text-sm text-gray-500 mb-6">
                 Підтримуються лише файли формату .docx (Word)
                 <span class="block mt-1 font-semibold text-amber-700">⚠️ Максимальний розмір файлу — {{ $maxUploadMb }} МБ</span>
+                @unless ($isPremium)
+                    <span class="block mt-1 text-xs">Зі статусом <a href="{{ route('premium') }}" class="font-semibold text-indigo-600 hover:underline">«Преміум»</a> — до {{ \App\Http\Controllers\NormControlController::PREMIUM_MAX_UPLOAD_MB }} МБ.</span>
+                @endunless
             </p>
 
             @if ($errors->any())

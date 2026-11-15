@@ -114,7 +114,8 @@ class RegistrationTest extends TestCase
         Livewire::test(ListUsers::class)->callAction(TestAction::make('makeTeacher')->table($student));
         $this->assertTrue($student->fresh()->hasRole(User::ROLE_TEACHER));
         Livewire::test(ListUsers::class)->callAction(TestAction::make('removeTeacher')->table($student));
-        $this->assertEqualsCanonicalizing([User::ROLE_PREMIUM, User::ROLE_STUDENT], $student->fresh()->getRoleNames()->all());
+        $this->assertSame([User::ROLE_STUDENT], $student->fresh()->getRoleNames()->all());
+        $this->assertTrue($student->fresh()->isPremium());
 
         Livewire::test(ListUsers::class)->callAction(TestAction::make('revokePremium')->table($student));
         $this->assertFalse($student->fresh()->isPremium());

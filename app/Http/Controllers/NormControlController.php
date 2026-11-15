@@ -36,15 +36,20 @@ class NormControlController extends Controller
         'ПЕРЕЛІК ДЖЕРЕЛ ПОСИЛАННЯ',
     ];
 
-    /** Максимальний розмір файлу роботи */
+    /** Максимальний розмір файлу роботи (МБ): звичайний і для статусу «Преміум» */
     public const MAX_UPLOAD_MB = 5;
 
-    public const MAX_UPLOAD_KB = self::MAX_UPLOAD_MB * 1024;
+    public const PREMIUM_MAX_UPLOAD_MB = 20;
+
+    public static function maxUploadMbFor(?User $user): int
+    {
+        return $user?->isPremium() ? self::PREMIUM_MAX_UPLOAD_MB : self::MAX_UPLOAD_MB;
+    }
 
     /** Тека тимчасових виправлених робіт (диск local = storage/app/private) */
     private const FIXED_DIR = 'fixed';
 
-    public const PREMIUM_MESSAGE = 'Автоматичне виправлення помилок доступне користувачам зі статусом «Преміум». Для отримання статусу зверніться до адміністратора @Barabolikov у Telegram.';
+    public const PREMIUM_MESSAGE = 'Автоматичне виправлення помилок доступне користувачам зі статусом «Преміум». Статус можна отримати за символічну пожертву (10 грн на місяць або 100 грн назавжди) на сторінці «Преміум».';
 
     /** Скільки прикладів однієї помилки форматування показувати у звіті */
     private const MAX_EXAMPLES_PER_RULE = 5;
@@ -134,20 +139,22 @@ class NormControlController extends Controller
         return view('norm-control.index', [
             'remainingChecks' => $request->user()->remainingChecksToday(),
             'dailyLimit' => User::STUDENT_DAILY_CHECKS,
-            'maxUploadMb' => self::MAX_UPLOAD_MB,
+            'maxUploadMb' => self::maxUploadMbFor($request->user()),
+            'isPremium' => $request->user()->isPremium(),
         ]);
     }
 
     public function process(Request $request)
     {
+        $maxMb = self::maxUploadMbFor($request->user());
         $request->validate([
-            'document' => ['required', 'file', 'mimes:docx', 'max:' . self::MAX_UPLOAD_KB],
+            'document' => ['required', 'file', 'mimes:docx', 'max:' . ($maxMb * 1024)],
             Turnstile::FIELD => ['required', new Turnstile],
         ], [
             'document.required' => 'Будь ласка, оберіть файл.',
             'document.mimes' => 'Файл має бути у форматі .docx!',
-            'document.max' => 'Розмір файлу не повинен перевищувати ' . self::MAX_UPLOAD_MB . ' МБ. Стисніть рисунки в документі (Файл → Стиснути зображення) і спробуйте ще раз.',
-            'document.uploaded' => 'Файл не вдалося завантажити: можливо, він завеликий (максимум ' . self::MAX_UPLOAD_MB . ' МБ).',
+            'document.max' => 'Розмір файлу не повинен перевищувати ' . $maxMb . ' МБ. Стисніть рисунки в документі (Файл → Стиснути зображення) і спробуйте ще раз.',
+            'document.uploaded' => 'Файл не вдалося завантажити: можливо, він завеликий (максимум ' . $maxMb . ' МБ).',
             Turnstile::FIELD . '.required' => 'Підтвердіть, що ви не робот.',
         ]);
 
@@ -193,7 +200,7 @@ class NormControlController extends Controller
     {
         return 'Студенти можуть перевіряти ' . User::STUDENT_DAILY_CHECKS . ' документ на день. '
             . 'Ліміт на сьогодні вичерпано — наступна перевірка буде доступна завтра (з 00:00 за київським часом). '
-            . 'Безліміт перевірок дає статус «Преміум» (зверніться до адміністратора @Barabolikov у Telegram).';
+            . 'Безліміт перевірок дає статус «Преміум» за символічну пожертву: ' . \App\Models\Payment::priceUah() . ' грн на місяць або ' . \App\Models\Payment::priceUah('lifetime') . ' грн назавжди (сторінка «Преміум»).';
     }
 
     private function analyze(Request $request, UploadedFile $file)

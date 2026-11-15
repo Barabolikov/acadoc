@@ -49,10 +49,18 @@ There are two separate UIs that share the same `users` table and session auth:
    - The language switcher (`bezhansalleh/filament-language-switch`) offers `uk` and `en` (`AppServiceProvider`). Labels for models and fields come from `lang/uk/models.php` through `__('models.*')`.
 
 Roles and access:
-- Role names are constants on `User`: `ROLE_STUDENT = 'Student'`, `ROLE_TEACHER = 'Викладач'`, `ROLE_PREMIUM = 'Преміум'`, `ROLE_ADMIN = 'super_admin'`. In the users table, an admin sets roles through the «Статус» action group: assign or remove teacher, grant or revoke Premium.
+- Role names are constants on `User`: `ROLE_STUDENT = 'Student'`, `ROLE_TEACHER = 'Викладач'`, `ROLE_ADMIN = 'super_admin'`. Premium is not a role (see below). In the users table, the «Статус» action group lets an admin assign or remove the teacher role, add a month of Premium, grant lifetime Premium, or revoke Premium.
 - Self-registration (`FrontendAuthController::register`, a modal in the layout, validation errors in the `register` bag) always assigns `Student`. The role the user picked is stored in `users.requested_role` (`student`/`teacher`), and an admin approves teachers in Filament with the "Призначити викладачем" table action. Only `super_admin` sees the roles field.
 - `User::canAccessPanel()` lets only `super_admin` into `/admin`. Students and teachers use the public site only.
 - Students without the teacher, Premium or admin role may run `User::STUDENT_DAILY_CHECKS` (1) norm-control checks per day, counted in `norm_control_checks` from 00:00 Europe/Kyiv (the app itself runs in UTC). `process()` reserves the check under `lockForUpdate` before analysing, and deletes the reservation if the file turns out to be broken.
+
+Premium by donation:
+- Premium is stored in `users.premium_until` (one month per donation, extended from the end of a still-active period by `User::extendPremium()`) and `users.premium_lifetime` (`grantLifetimePremium()`). `User::isPremium()` is true when either applies, and always for `super_admin`. Premium removes the daily limit, enables auto-fix and raises the upload limit to `NormControlController::PREMIUM_MAX_UPLOAD_MB` (20 MB, see `maxUploadMbFor()`).
+- There are two plans, `Payment::MONTH` (`PREMIUM_PRICE_UAH`, 10) and `Payment::LIFETIME` (`PREMIUM_LIFETIME_PRICE_UAH`, 100). For monobank the plan is decided by the transfer amount (`Payment::planForUah()`). For PayPal the user picks it (`PAYPAL_AMOUNT` / `PAYPAL_LIFETIME_AMOUNT`). `Payment::markPaid()` applies the plan; it is idempotent and runs under a row lock.
+- The `/premium` page (`PremiumController`) offers two providers, each shown only if configured in `.env` (`config/services.php`: `premium`, `monobank`, `paypal`).
+  - `MonobankJar`: a monobank jar donation. The user gets a 6-digit code to put in the transfer comment. A personal-API webhook (`/payments/monobank/{MONOBANK_WEBHOOK_SECRET}`, CSRF-exempt in `bootstrap/app.php`) or the "перевірити" button (jar statement, at most once per 60 s) matches the code and grants Premium. `php artisan monobank:setup [--webhook]` lists jars and registers the webhook.
+  - `PayPal`: Orders API v2 (create order → approve → capture on `/premium/paypal/return`).
+- Admins see donations in Filament (`PaymentResource`) and can confirm a pending one manually.
 
 Domain models: `Department` 1→N `Group`, and `User` belongs to both a `Department` and a `Group` (`department_id`, `group_id`).
 

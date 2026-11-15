@@ -75,6 +75,7 @@
         $faq = [
             ['q' => 'Хто може користуватися сервісом?', 'a' => 'Студенти й викладачі навчального закладу. Зареєструйтеся, обравши «Студент» або «Викладач». Нові облікові записи отримують права студента, а роль викладача підтверджує адміністратор.'],
             ['q' => 'Скільки робіт можна перевірити?', 'a' => 'Студенти можуть перевіряти 1 документ на день; ліміт оновлюється о 00:00 за київським часом. Тож завантажуйте остаточну версію роботи, виправивши все, що можна. Для викладачів і користувачів зі статусом «Преміум» обмежень немає.'],
+            ['q' => 'Що дає статус «Преміум» і як його отримати?', 'a' => 'Безліміт перевірок, автоматичне виправлення помилок оформлення та файли до 20 МБ. Символічна пожертва ' . \App\Models\Payment::priceUah() . ' грн дає «Преміум» на місяць (повторна продовжує його), ' . \App\Models\Payment::priceUah('lifetime') . ' грн — назавжди. Оплата через monobank або PayPal на сторінці «Преміум». Пожертви йдуть на оплату хостингу, домену та розвиток сервісу.'],
             ['q' => 'Які файли можна перевірити?', 'a' => 'Документи Microsoft Word у форматі .docx розміром до 5 МБ. Якщо робота в .doc або .pdf, відкрийте її у Word і збережіть як .docx.'],
             ['q' => 'Чи зберігається моя робота на сервері?', 'a' => 'Ні. Файл аналізується одразу після завантаження й не зберігається: у журналі лишаються тільки назва файлу, його контрольна сума й кількість зауважень. Результат бачите лише ви, а за бажанням можете завантажити звіт у форматі Word (.docx).'],
             ['q' => 'Чи замінює перевірка нормоконтролера?', 'a' => 'Ні, вона допомагає підготуватися до нормоконтролю. Сервіс знаходить типові помилки оформлення до того, як ви здасте роботу. Остаточне рішення ухвалює нормоконтролер або керівник.'],
@@ -90,8 +91,8 @@
         <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 pb-10 lg:pt-8 lg:pb-14">
             {{-- Назва навчального закладу: по центру, великими літерами, градієнт як у «перед здачею» --}}
             <p class="max-w-6xl mx-auto mb-6 lg:mb-8 text-center text-xl sm:text-2xl lg:text-4xl font-extrabold uppercase tracking-wide leading-snug text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-sky-500">
-                ВСП «Конотопський <span class="lg:whitespace-nowrap">індустріально-педагогічний</span> фаховий коледж СумДУ» -
-            <span class="sm:text-2xl">Гурток "WEB DEVELOPER"</span>
+                Нормоконтроль робіт <span class="lg:whitespace-nowrap"> - БЕЗКОШТОВНО</span>
+
             </p>
 
             <div class="grid lg:grid-cols-2 gap-7 items-center">
@@ -188,7 +189,7 @@
 
     {{-- ПЕРЕВАГИ --}}
     <section class="border-y border-gray-100 bg-white">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5 grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-center">
             @foreach ([
                 ['Кілька секунд', 'на перевірку однієї роботи', 'M13 10V3L4 14h7v7l9-11h-7z'],
                 ['Конфіденційно', 'файл не зберігається на сервері', 'M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z'],
@@ -204,6 +205,18 @@
                     </div>
                 </div>
             @endforeach
+
+            {{-- Заклик до пожертви на розвиток сервісу --}}
+            <a href="{{ route('premium') }}" class="flex items-center gap-4 rounded-2xl bg-amber-50 border border-amber-200 hover:border-amber-300 hover:bg-amber-100/60 transition px-3 py-2">
+                <div class="w-12 h-12 shrink-0 rounded-2xl bg-amber-500 text-white flex items-center justify-center">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4.3 6.3a4.5 4.5 0 016.4 0L12 7.6l1.3-1.3a4.5 4.5 0 116.4 6.4L12 20.4l-7.7-7.7a4.5 4.5 0 010-6.4z"/></svg>
+                </div>
+                <div class="min-w-0">
+                    <p class="font-extrabold text-gray-900 text-lg">Підтримайте Acadoc</p>
+                    <p class="text-gray-600 text-sm">{{ \App\Models\Payment::priceUah() }} грн/міс або {{ \App\Models\Payment::priceUah('lifetime') }} грн назавжди — на хостинг і розвиток цього сервісу.
+                        <span class="font-bold text-amber-600 whitespace-nowrap">Підтримати →</span></p>
+                </div>
+            </a>
         </div>
     </section>
 
@@ -306,6 +319,46 @@
                         <li class="flex gap-3"><svg class="w-6 h-6 shrink-0 text-emerald-600" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>{{ $item }}</li>
                     @endforeach
                 </ul>
+            </div>
+        </div>
+    </section>
+
+    {{-- ПРЕМІУМ --}}
+    <section id="premium" class="scroll-mt-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-10 lg:pb-14">
+        <div class="relative overflow-hidden rounded-3xl bg-gradient-to-br from-amber-50 via-white to-orange-50 border border-amber-200 p-8 sm:p-10">
+            <div class="grid lg:grid-cols-[1.4fr_1fr] gap-7 items-center">
+                <div>
+                    <p class="text-amber-600 font-bold uppercase tracking-wider text-sm mb-3">⭐ Преміум-акаунт</p>
+                    <h2 class="text-2xl sm:text-3xl font-extrabold text-gray-900 mb-3">Символічна пожертва на розвиток проєкту</h2>
+                    <p class="text-gray-700 mb-4">
+                        Acadoc — некомерційний проєкт студентського гуртка «WEB DEVELOPER». Підтримайте його символічною пожертвою
+                        <strong>{{ \App\Models\Payment::priceUah() }} грн на місяць</strong> або <strong>{{ \App\Models\Payment::priceUah('lifetime') }} грн назавжди</strong> — і отримайте статус «Преміум» автоматично, одразу після переказу.
+                    </p>
+                    <ul class="grid sm:grid-cols-2 gap-2 text-gray-700 mb-4">
+                        @foreach (['Безліміт перевірок щодня', 'Автоматичне виправлення помилок', 'Файли до '.\App\Http\Controllers\NormControlController::PREMIUM_MAX_UPLOAD_MB.' МБ замість '.\App\Http\Controllers\NormControlController::MAX_UPLOAD_MB.' МБ', 'Виправлена робота — одним файлом'] as $item)
+                            <li class="flex gap-2"><svg class="w-6 h-6 shrink-0 text-amber-500" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>{{ $item }}</li>
+                        @endforeach
+                    </ul>
+                    <p class="text-sm text-gray-600 bg-white/70 border border-amber-100 rounded-xl p-3">
+                        💛 Усі пожертви йдуть на <strong>оплату хостингу та домену</strong>, а також на <strong>розвиток і вдосконалення сервісу</strong> — нові перевірки, точніші виправлення й підтримку роботи для студентів коледжу.
+                    </p>
+                </div>
+                <div class="rounded-2xl bg-white border border-amber-200 shadow-sm p-6 text-center">
+                    <div class="grid grid-cols-2 gap-3 mb-4">
+                        <div class="rounded-xl border border-gray-200 p-3">
+                            <p class="text-sm text-gray-500">На місяць</p>
+                            <p class="text-4xl font-black text-gray-900">{{ \App\Models\Payment::priceUah() }} <span class="text-xl">грн</span></p>
+                        </div>
+                        <div class="rounded-xl border-2 border-amber-400 bg-amber-50 p-3">
+                            <p class="text-sm text-amber-700 font-semibold">Назавжди</p>
+                            <p class="text-4xl font-black text-gray-900">{{ \App\Models\Payment::priceUah('lifetime') }} <span class="text-xl">грн</span></p>
+                        </div>
+                    </div>
+                    <p class="text-sm text-gray-500 mb-4">monobank або PayPal · статус вмикається автоматично</p>
+                    <a href="{{ route('premium') }}" class="block w-full bg-amber-500 hover:bg-amber-600 text-white font-bold py-3 px-6 rounded-xl shadow-sm transition">
+                        Отримати «Преміум»
+                    </a>
+                </div>
             </div>
         </div>
     </section>
