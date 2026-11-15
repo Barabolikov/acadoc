@@ -11,6 +11,7 @@ use App\Services\NormControl\PageSetupChecks;
 use App\Services\NormControl\TitlePageInfo;
 use App\Services\NormControl\WordStyles;
 use App\Models\User;
+use App\Rules\Turnstile;
 use App\Services\NormControl\ReportDocx;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\UploadedFile;
@@ -31,6 +32,11 @@ class NormControlController extends Controller
         'СПИСОК ЛІТЕРАТУРНИХ ДЖЕРЕЛ',
         'ПЕРЕЛІК ДЖЕРЕЛ ПОСИЛАННЯ',
     ];
+
+    /** Максимальний розмір файлу роботи */
+    public const MAX_UPLOAD_MB = 5;
+
+    public const MAX_UPLOAD_KB = self::MAX_UPLOAD_MB * 1024;
 
     /** Скільки прикладів однієї помилки форматування показувати у звіті */
     private const MAX_EXAMPLES_PER_RULE = 5;
@@ -120,17 +126,21 @@ class NormControlController extends Controller
         return view('norm-control.index', [
             'remainingChecks' => $request->user()->remainingChecksToday(),
             'dailyLimit' => User::STUDENT_DAILY_CHECKS,
+            'maxUploadMb' => self::MAX_UPLOAD_MB,
         ]);
     }
 
     public function process(Request $request)
     {
         $request->validate([
-            'document' => ['required', 'file', 'mimes:docx', 'max:10240'],
+            'document' => ['required', 'file', 'mimes:docx', 'max:' . self::MAX_UPLOAD_KB],
+            Turnstile::FIELD => ['required', new Turnstile],
         ], [
             'document.required' => 'Будь ласка, оберіть файл.',
             'document.mimes' => 'Файл має бути у форматі .docx!',
-            'document.max' => 'Розмір файлу не повинен перевищувати 10 МБ.'
+            'document.max' => 'Розмір файлу не повинен перевищувати ' . self::MAX_UPLOAD_MB . ' МБ. Стисніть рисунки в документі (Файл → Стиснути зображення) і спробуйте ще раз.',
+            'document.uploaded' => 'Файл не вдалося завантажити: можливо, він завеликий (максимум ' . self::MAX_UPLOAD_MB . ' МБ).',
+            Turnstile::FIELD . '.required' => 'Підтвердіть, що ви не робот.',
         ]);
 
         $user = $request->user();

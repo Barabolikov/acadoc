@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Rules\Turnstile;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rules\Password;
@@ -13,10 +14,13 @@ class FrontendAuthController extends Controller
     // Обробка спроби входу
     public function login(Request $request)
     {
-        $credentials = $request->validate([
+        // Помилки входу — в окремому наборі 'login', щоб вікно входу відкривалося лише через них
+        $request->validateWithBag('login', [
             'email' => ['required', 'email'],
             'password' => ['required'],
-        ]);
+            Turnstile::FIELD => ['required', new Turnstile],
+        ], [Turnstile::FIELD.'.required' => 'Підтвердіть, що ви не робот.']);
+        $credentials = $request->only('email', 'password');
 
         if (Auth::attempt($credentials, $request->boolean('remember'))) {
             $request->session()->regenerate();
@@ -27,7 +31,7 @@ class FrontendAuthController extends Controller
 
         return back()->withErrors([
             'email' => 'Невірний email або пароль.',
-        ])->onlyInput('email');
+        ], 'login')->onlyInput('email');
     }
 
     // Реєстрація: будь-хто стає студентом; бажання бути викладачем фіксуємо в requested_role,
@@ -43,7 +47,9 @@ class FrontendAuthController extends Controller
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
             'password' => ['required', 'confirmed', Password::min(8)],
             'requested_role' => ['required', 'in:student,teacher'],
+            Turnstile::FIELD => ['required', new Turnstile],
         ], [
+            Turnstile::FIELD.'.required' => 'Підтвердіть, що ви не робот.',
             'name.required' => 'Вкажіть прізвище та ім\'я.',
             'email.required' => 'Вкажіть електронну пошту.',
             'email.email' => 'Електронна пошта має неправильний формат.',

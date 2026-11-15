@@ -692,7 +692,7 @@ class NormControlTest extends TestCase
     private function upload(User $user, string $docxPath)
     {
         return $this->actingAs($user)->post(route('norm-control.process'), [
-            'document' => new UploadedFile($docxPath, 'robota.docx', null, null, true),
+            'document' => new UploadedFile($docxPath, 'robota.docx', null, null, true), ...self::CAPTCHA,
         ]);
     }
 
@@ -770,7 +770,7 @@ class NormControlTest extends TestCase
         $file = new UploadedFile($docxPath, 'robota.docx', null, null, true);
 
         return $this->actingAs(User::factory()->create())
-            ->post(route('norm-control.process'), ['document' => $file]);
+            ->post(route('norm-control.process'), ['document' => $file, ...self::CAPTCHA]);
     }
 
     private function messages($response): array

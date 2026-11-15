@@ -22,6 +22,7 @@ class RegistrationTest extends TestCase
             'password' => 'sekret-123',
             'password_confirmation' => 'sekret-123',
             'requested_role' => 'student',
+            ...self::CAPTCHA,
         ]);
     }
 

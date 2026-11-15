@@ -3,6 +3,7 @@
 @section('title', 'Acadoc | Нормоконтроль студентських робіт за ДСТУ та ЄСКД')
 
 @section('content')
+
     @php
         // Що перевіряється зараз (реалізовано в NormControlController)
         $checkGroups = [
@@ -74,7 +75,7 @@
         $faq = [
             ['q' => 'Хто може користуватися сервісом?', 'a' => 'Студенти й викладачі навчального закладу. Зареєструйтеся, обравши «Студент» або «Викладач». Нові облікові записи отримують права студента, а роль викладача підтверджує адміністратор.'],
             ['q' => 'Скільки робіт можна перевірити?', 'a' => 'Студенти можуть перевіряти 1 документ на день; ліміт оновлюється о 00:00 за київським часом. Тож завантажуйте остаточну версію роботи, виправивши все, що можна. Для викладачів обмежень немає.'],
-            ['q' => 'Які файли можна перевірити?', 'a' => 'Документи Microsoft Word у форматі .docx розміром до 10 МБ. Якщо робота в .doc або .pdf, відкрийте її у Word і збережіть як .docx.'],
+            ['q' => 'Які файли можна перевірити?', 'a' => 'Документи Microsoft Word у форматі .docx розміром до 5 МБ. Якщо робота в .doc або .pdf, відкрийте її у Word і збережіть як .docx.'],
             ['q' => 'Чи зберігається моя робота на сервері?', 'a' => 'Ні. Файл аналізується одразу після завантаження й не зберігається: у журналі лишаються тільки назва файлу, його контрольна сума й кількість зауважень. Результат бачите лише ви, а за бажанням можете завантажити звіт у форматі Word (.docx).'],
             ['q' => 'Чи замінює перевірка нормоконтролера?', 'a' => 'Ні, вона допомагає підготуватися до нормоконтролю. Сервіс знаходить типові помилки оформлення до того, як ви здасте роботу. Остаточне рішення ухвалює нормоконтролер або керівник.'],
             ['q' => 'Чому сервіс показує помилку, якої в мене немає?', 'a' => 'Перевірка спирається на внутрішню розмітку Word. Якщо форматування задано вручну, а не через стилі, програма може його не розпізнати. Використовуйте стилі «Звичайний» та «Заголовок 1–3», і результат буде точнішим.'],
@@ -86,27 +87,29 @@
         <div class="absolute -top-24 -right-24 w-96 h-96 bg-indigo-200/40 rounded-full blur-3xl"></div>
         <div class="absolute top-40 -left-24 w-72 h-72 bg-sky-200/40 rounded-full blur-3xl"></div>
 
-        <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-12 pb-20 lg:pt-16 lg:pb-28">
+        <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 pb-10 lg:pt-8 lg:pb-14">
             {{-- Назва навчального закладу: по центру, великими літерами, градієнт як у «перед здачею» --}}
-            <p class="max-w-6xl mx-auto mb-12 lg:mb-16 text-center text-xl sm:text-2xl lg:text-4xl font-extrabold uppercase tracking-wide leading-snug text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-sky-500">
-                ВСП «Конотопський <span class="lg:whitespace-nowrap">індустріально-педагогічний</span> фаховий коледж СумДУ»
+            <p class="max-w-6xl mx-auto mb-6 lg:mb-8 text-center text-xl sm:text-2xl lg:text-4xl font-extrabold uppercase tracking-wide leading-snug text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-sky-500">
+                ВСП «Конотопський <span class="lg:whitespace-nowrap">індустріально-педагогічний</span> фаховий коледж СумДУ» -
+            <span class="sm:text-2xl">Гурток "WEB DEVELOPER"</span>
             </p>
 
-            <div class="grid lg:grid-cols-2 gap-14 items-center">
+            <div class="grid lg:grid-cols-2 gap-7 items-center">
+
             <div>
 
-                <h1 class="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-gray-900 tracking-tight leading-[1.1] mb-6">
-                    Перевірте роботу на&nbsp;нормоконтроль
+                <h1 class="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-gray-900 tracking-tight leading-[1.1] mb-6">
+                    Перевірте курсову/дипломну роботу на&nbsp;нормоконтроль
                     <span class="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-sky-500">перед здачею</span>
                 </h1>
 
-                <p class="text-lg sm:text-xl text-gray-600 leading-relaxed mb-8 max-w-xl">
+                <p class="text-lg sm:text-xl text-gray-600 leading-relaxed mb-4 max-w-xl">
                     Автоматична перевірка курсових, дипломних і звітів з практики на відповідність
                     <strong class="text-gray-800">ДСТУ 3008:2015</strong> та стандартам <strong class="text-gray-800">ЄСКД</strong>.
                     Завантажте .docx і за кілька секунд отримайте список помилок із точним місцем у тексті.
                 </p>
 
-                <div class="flex flex-col sm:flex-row gap-3 mb-8">
+                <div class="flex flex-col sm:flex-row gap-3 mb-4">
                     @guest
                         <button @click="isRegisterOpen = true" class="inline-flex items-center justify-center gap-2 bg-indigo-600 text-white px-8 py-4 rounded-xl font-bold hover:bg-indigo-700 shadow-lg shadow-indigo-600/20 hover:shadow-xl transition transform hover:-translate-y-0.5">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M16 8l-4-4-4 4M12 4v12"/></svg>
@@ -185,7 +188,7 @@
 
     {{-- ПЕРЕВАГИ --}}
     <section class="border-y border-gray-100 bg-white">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 grid grid-cols-1 sm:grid-cols-3 gap-8">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5 grid grid-cols-1 sm:grid-cols-3 gap-4">
             @foreach ([
                 ['Кілька секунд', 'на перевірку однієї роботи', 'M13 10V3L4 14h7v7l9-11h-7z'],
                 ['Конфіденційно', 'файл не зберігається на сервері', 'M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z'],
@@ -205,8 +208,8 @@
     </section>
 
     {{-- ЩО ПЕРЕВІРЯЄТЬСЯ --}}
-    <section id="checks" class="scroll-mt-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 lg:py-28">
-        <div class="text-center max-w-3xl mx-auto mb-14">
+    <section id="checks" class="scroll-mt-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 lg:py-14">
+        <div class="text-center max-w-3xl mx-auto mb-7">
             <p class="text-indigo-600 font-bold uppercase tracking-wider text-sm mb-3">Що перевіряється</p>
             <h2 class="text-3xl sm:text-4xl font-extrabold text-gray-900 mb-4">Вимоги стандартів, які найчастіше порушують</h2>
             <p class="text-gray-600 text-lg">
@@ -226,7 +229,7 @@
             ];
         @endphp
 
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
             @foreach ($checkGroups as $group)
                 <div class="bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-lg hover:-translate-y-1 transition p-7">
                     <div class="w-12 h-12 rounded-xl {{ $palette[$group['color']] }} flex items-center justify-center mb-5">
@@ -249,17 +252,17 @@
 
     {{-- ЯК ЦЕ ПРАЦЮЄ --}}
     <section id="how" class="scroll-mt-20 bg-gray-900 text-white">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 lg:py-28">
-            <div class="text-center max-w-3xl mx-auto mb-14">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 lg:py-14">
+            <div class="text-center max-w-3xl mx-auto mb-7">
                 <p class="text-indigo-300 font-bold uppercase tracking-wider text-sm mb-3">Як це працює</p>
                 <h2 class="text-3xl sm:text-4xl font-extrabold mb-4">Чотири кроки до роботи без зауважень</h2>
                 <p class="text-gray-400 text-lg">Без встановлення програм: потрібні лише браузер і ваш файл Word.</p>
             </div>
 
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
                 @foreach ([
                     ['Зареєструйтеся або увійдіть', 'Створіть обліковий запис студента чи викладача за кілька секунд.'],
-                    ['Завантажте .docx', 'Відкрийте «Функції → Нормоконтроль» і оберіть файл роботи (до 10 МБ).'],
+                    ['Завантажте .docx', 'Відкрийте «Функції → Нормоконтроль» і оберіть файл роботи (до 5 МБ).'],
                     ['Отримайте звіт', 'Система розбере документ і покаже кожне зауваження: що не так, у якому розділі та в якому фрагменті тексту.'],
                     ['Виправте й перевірте знову', 'Внесіть правки у Word, повторіть перевірку й завантажте звіт у Word для керівника.'],
                 ] as $i => [$title, $text])
@@ -271,7 +274,7 @@
                 @endforeach
             </div>
 
-            <div class="mt-12 rounded-2xl bg-gradient-to-r from-indigo-600/30 to-sky-500/20 border border-indigo-400/20 p-6 sm:p-8 flex flex-col sm:flex-row gap-4 sm:items-center">
+            <div class="mt-6 rounded-2xl bg-gradient-to-r from-indigo-600/30 to-sky-500/20 border border-indigo-400/20 p-6 sm:p-8 flex flex-col sm:flex-row gap-4 sm:items-center">
                 <svg class="w-8 h-8 shrink-0 text-indigo-300" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9.7 17h4.6M12 3v1m6.4 1.6l-.7.7M21 12h-1M4 12H3m3.3-5.7l-.7-.7m2.8 9.8a5 5 0 117 0l-.5.6a3.4 3.4 0 00-1 2.4V19a2 2 0 11-4 0v-.2c0-.9-.4-1.8-1-2.4l-.5-.5z"/></svg>
                 <p class="text-gray-200">
                     <strong class="text-white">Порада:</strong> оформлюйте роботу через стилі Word («Звичайний», «Заголовок 1–3»)
@@ -282,8 +285,8 @@
     </section>
 
     {{-- ДЛЯ КОГО --}}
-    <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 lg:py-28">
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 lg:py-14">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-3">
             <div class="rounded-3xl bg-gradient-to-br from-indigo-50 to-white border border-indigo-100 p-8 sm:p-10">
                 <p class="text-indigo-600 font-bold uppercase tracking-wider text-sm mb-3">Для студентів</p>
                 <h3 class="text-2xl sm:text-3xl font-extrabold text-gray-900 mb-4">Здавайте роботу з першого разу</h3>
@@ -309,8 +312,8 @@
 
     {{-- FAQ --}}
     <section id="faq" class="scroll-mt-20 bg-gray-50 border-t border-gray-100">
-        <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-20 lg:py-28">
-            <div class="text-center mb-12">
+        <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-10 lg:py-14">
+            <div class="text-center mb-6">
                 <p class="text-indigo-600 font-bold uppercase tracking-wider text-sm mb-3">FAQ</p>
                 <h2 class="text-3xl sm:text-4xl font-extrabold text-gray-900">Часті запитання</h2>
             </div>
@@ -333,7 +336,7 @@
 
     {{-- ЗАКЛИК --}}
     <section class="bg-gradient-to-r from-indigo-600 to-sky-600">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 flex flex-col lg:flex-row items-center justify-between gap-8 text-center lg:text-left">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex flex-col lg:flex-row items-center justify-between gap-4 text-center lg:text-left">
             <div>
                 <h2 class="text-3xl font-extrabold text-white mb-2">Готові перевірити свою роботу?</h2>
                 <p class="text-indigo-100 text-lg">Знайдіть помилки оформлення до того, як їх знайде нормоконтролер.</p>

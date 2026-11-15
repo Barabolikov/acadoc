@@ -35,4 +35,11 @@ return [
         ],
     ],
 
+    // Капча Cloudflare Turnstile (форми входу, реєстрації та завантаження роботи).
+    // Ключі: https://dash.cloudflare.com → Turnstile. Без ключів форми не приймаються.
+    'turnstile' => [
+        'site_key' => env('TURNSTILE_SITE_KEY'),
+        'secret_key' => env('TURNSTILE_SECRET_KEY'),
+    ],
+
 ];

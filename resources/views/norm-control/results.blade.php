@@ -3,7 +3,7 @@
 @section('title', 'Результати перевірки | Acadoc')
 
 @section('content')
-    <div class="max-w-4xl mx-auto px-4 py-12">
+    <div class="max-w-4xl mx-auto px-4 py-6">
 
         <!-- Кнопка назад -->
         <a href="{{ route('norm-control.index') }}" class="inline-flex items-center text-sm font-medium text-gray-500 hover:text-indigo-600 mb-6 transition">
@@ -19,8 +19,8 @@
 
             <div class="p-8">
                 <h2 class="text-lg font-bold text-gray-900 mb-4 border-b pb-2">Загальна статистика</h2>
-                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-8">
-                    <div class="flex flex-col md:flex-row justify-between gap-6">
+                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-4">
+                    <div class="flex flex-col md:flex-row justify-between gap-3">
                         <!-- Інформація про документ -->
                         <div class="space-y-2">
                             <h1 class="text-2xl font-black text-gray-900 flex items-center gap-2">
@@ -32,7 +32,7 @@
                         </div>
 
                         <!-- Учасники процесу -->
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-12 gap-y-3 bg-indigo-50 p-4 rounded-xl border border-indigo-100">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 bg-indigo-50 p-4 rounded-xl border border-indigo-100">
                             <div>
                                 <p class="text-[10px] uppercase tracking-wider text-indigo-400 font-black">Виконав студент:</p>
                                 <p class="text-sm font-bold text-indigo-900">{{ $studentName }}</p>
@@ -52,7 +52,7 @@
                     </div>
                 </div>
                 <!-- Блок зі статистикою -->
-                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
                     <div class="bg-gray-50 p-4 rounded-xl border border-gray-100 text-center">
                         <p class="text-xs text-gray-500 uppercase font-bold mb-1">Абзаців</p>
                         <p class="text-2xl font-black text-indigo-600">{{ $paragraphsCount }}</p>
@@ -123,10 +123,10 @@
                     </div>
                 </div>
                 <!-- Блок перевірки структури -->
-                <h2 class="text-lg font-bold text-gray-900 mt-10 mb-4 border-b pb-2">Структура документа (Послідовність розділів)</h2>
+                <h2 class="text-lg font-bold text-gray-900 mt-5 mb-4 border-b pb-2">Структура документа (Послідовність розділів)</h2>
 
                 <div class="bg-gray-50 rounded-xl p-6 border border-gray-100">
-                    <div class="relative border-l-2 border-indigo-200 ml-3 space-y-6">
+                    <div class="relative border-l-2 border-indigo-200 ml-3 space-y-3">
 
                         <!-- 1. Титулка -->
                         <div class="relative pl-6">
@@ -230,7 +230,7 @@
                     </div>
                 </div>
                 <!-- Журнал конкретних виправлень -->
-                <h2 class="text-lg font-bold text-gray-900 mt-10 mb-4 border-b pb-2 flex items-center gap-2">
+                <h2 class="text-lg font-bold text-gray-900 mt-5 mb-4 border-b pb-2 flex items-center gap-2">
                     <span class="text-xl">📋</span> Журнал виправлень (Що і де виправити)
                 </h2>
 
@@ -291,7 +291,7 @@
                 @endif
             </div>
         </div>
-        <div class="mt-8 flex flex-col items-center gap-4">
+        <div class="mt-4 flex flex-col items-center gap-4">
             <div class="max-w-xl w-full bg-blue-50 border border-blue-100 rounded-lg p-4 text-sm text-blue-800 text-center">
                 <strong>ℹ️ Примітка:</strong> Отриманий файл звіту слід надіслати керівнику проєкту.
             </div>
