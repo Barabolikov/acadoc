@@ -26,6 +26,7 @@ class PremiumTest extends TestCase
 
     private function enableMonobank(): void
     {
+        config(['services.premium.payments_enabled' => true]);
         config(['services.monobank' => [
             'token' => 'mono-token', 'jar_id' => self::JAR,
             'jar_url' => 'https://send.monobank.ua/jar/TEST', 'webhook_secret' => 'hook-secret',
@@ -34,6 +35,7 @@ class PremiumTest extends TestCase
 
     private function enablePayPal(): void
     {
+        config(['services.premium.payments_enabled' => true]);
         config(['services.paypal' => ['mode' => 'sandbox', 'client_id' => 'id', 'secret' => 'secret', 'amount' => '1.00', 'currency' => 'USD']]);
     }
 
@@ -50,6 +52,7 @@ class PremiumTest extends TestCase
 
     public function test_home_page_has_premium_block(): void
     {
+        config(['services.premium.payments_enabled' => true]);
         $this->get('/')->assertOk()
             ->assertSee('Символічна пожертва на розвиток проєкту')->assertSee('100 <span class="text-xl">грн</span>', false)
             ->assertSee('оплату хостингу та домену', false)
@@ -60,8 +63,26 @@ class PremiumTest extends TestCase
     {
         config(['services.monobank.jar_url' => null, 'services.paypal.client_id' => null]);
 
-        $this->get(route('premium'))->assertOk()->assertSee('Увійдіть, щоб зробити пожертву');
-        $this->actingAs($this->student())->get(route('premium'))->assertSee('Онлайн-оплата ще налаштовується');
+        $this->get(route('premium'))->assertOk()->assertSee('Увійдіть, щоб отримати «Преміум»');
+        $this->actingAs($this->student())->get(route('premium'))->assertSee('Статус «Преміум» надається особисто адміністратором ресурсу');
+    }
+
+    public function test_payments_switched_off_hide_providers_and_show_telegram(): void
+    {
+        $this->enableMonobank();
+        $this->enablePayPal();
+        config(['services.premium.payments_enabled' => false]);
+        $user = $this->student();
+
+        $this->actingAs($user)->get(route('premium'))->assertOk()
+            ->assertSee('Статус «Преміум» надається особисто адміністратором ресурсу')->assertSee('https://t.me/Barabolikov')->assertSee($user->email)
+            ->assertDontSee('Отримати код і підтримати')->assertDontSee('грн');
+        $this->actingAs($user)->post(route('premium.monobank'))->assertNotFound();
+        $this->actingAs($user)->post(route('premium.paypal'), ['plan' => 'month'])->assertNotFound();
+        foreach (['/', route('rules'), route('premium')] as $url) {
+            $this->get($url)->assertOk()->assertSee('надається особисто адміністратором ресурсу')
+                ->assertDontSee('monobank')->assertDontSee('PayPal')->assertDontSee('пожертв');
+        }
     }
 
     public function test_monobank_webhook_grants_premium_by_code(): void

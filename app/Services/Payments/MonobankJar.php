@@ -25,7 +25,7 @@ class MonobankJar
 
     public static function enabled(): bool
     {
-        return filled(config('services.monobank.jar_url'));
+        return Payment::paymentsEnabled() && filled(config('services.monobank.jar_url'));
     }
 
     /** Чи налаштовано автоматичне зарахування (токен і банка) */

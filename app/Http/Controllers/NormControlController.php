@@ -49,7 +49,10 @@ class NormControlController extends Controller
     /** Тека тимчасових виправлених робіт (диск local = storage/app/private) */
     private const FIXED_DIR = 'fixed';
 
-    public const PREMIUM_MESSAGE = 'Автоматичне виправлення помилок доступне користувачам зі статусом «Преміум». Статус можна отримати за символічну пожертву (10 грн на місяць або 100 грн назавжди) на сторінці «Преміум».';
+    public static function premiumMessage(): string
+    {
+        return 'Автоматичне виправлення помилок доступне користувачам зі статусом «Преміум». '.\App\Models\Payment::howToGet();
+    }
 
     /** Скільки прикладів однієї помилки форматування показувати у звіті */
     private const MAX_EXAMPLES_PER_RULE = 5;
@@ -200,7 +203,7 @@ class NormControlController extends Controller
     {
         return 'Студенти можуть перевіряти ' . User::STUDENT_DAILY_CHECKS . ' документ на день. '
             . 'Ліміт на сьогодні вичерпано — наступна перевірка буде доступна завтра (з 00:00 за київським часом). '
-            . 'Безліміт перевірок дає статус «Преміум» за символічну пожертву: ' . \App\Models\Payment::priceUah() . ' грн на місяць або ' . \App\Models\Payment::priceUah('lifetime') . ' грн назавжди (сторінка «Преміум»).';
+            . 'Безліміт перевірок дає статус «Преміум». ' . \App\Models\Payment::howToGet();
     }
 
     private function analyze(Request $request, UploadedFile $file)
@@ -715,7 +718,7 @@ class NormControlController extends Controller
     public function downloadFixed(Request $request)
     {
         if (!$request->user()->isPremium()) {
-            return redirect()->route('norm-control.index')->withErrors(['document' => self::PREMIUM_MESSAGE]);
+            return redirect()->route('norm-control.index')->withErrors(['document' => self::premiumMessage()]);
         }
 
         $fixed = $request->session()->get('norm_control_fixed');

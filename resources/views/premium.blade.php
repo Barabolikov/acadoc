@@ -13,12 +13,17 @@
 
         <div class="mb-5 text-center">
             <p class="text-amber-600 font-bold uppercase tracking-wider text-sm mb-2">⭐ Преміум-акаунт</p>
+            @if (\App\Models\Payment::paymentsEnabled())
             <h1 class="text-3xl sm:text-4xl font-extrabold text-gray-900 mb-2">Підтримайте розвиток Acadoc</h1>
             <p class="text-gray-600 max-w-2xl mx-auto">
                 Символічна пожертва на розвиток проєкту відкриває статус «Преміум»:
                 <strong>{{ $price }} грн — на місяць</strong> або <strong>{{ $lifetimePrice }} грн — назавжди</strong>.
                 Кошти йдуть на оплату хостингу та домену, розвиток і вдосконалення сервісу.
             </p>
+            @else
+            <h1 class="text-3xl sm:text-4xl font-extrabold text-gray-900 mb-2">Преміум-акаунт Acadoc</h1>
+            <p class="text-gray-600 max-w-2xl mx-auto">Статус «Преміум» надається особисто адміністратором ресурсу.</p>
+            @endif
         </div>
 
         @if ($errors->has('payment'))
@@ -40,6 +45,7 @@
         </div>
 
         {{-- Тарифи --}}
+        @if (\App\Models\Payment::paymentsEnabled())
         <div class="grid sm:grid-cols-2 gap-3 mb-5">
             <div class="rounded-2xl border-2 border-gray-200 bg-white p-5 text-center">
                 <p class="font-bold text-gray-900">На місяць</p>
@@ -53,6 +59,7 @@
                 <p class="text-sm text-gray-600">Один раз — і «Преміум» без строку дії.</p>
             </div>
         </div>
+        @endif
 
         <div id="pay" class="scroll-mt-20 rounded-2xl border border-gray-200 bg-white p-6 sm:p-8">
             @if ($isPremium)
@@ -70,7 +77,7 @@
                 {{-- «Преміум» без строку — платити нічого не треба --}}
             @elseif (! $user)
                 <div class="text-center">
-                    <h2 class="text-xl font-bold text-gray-900 mb-2">Увійдіть, щоб зробити пожертву</h2>
+                    <h2 class="text-xl font-bold text-gray-900 mb-2">{{ \App\Models\Payment::paymentsEnabled() ? 'Увійдіть, щоб зробити пожертву' : 'Увійдіть, щоб отримати «Преміум»' }}</h2>
                     <p class="text-gray-600 mb-4">Статус «Преміум» надається вашому обліковому запису, тож спершу увійдіть або зареєструйтеся.</p>
                     <div class="flex flex-col sm:flex-row justify-center gap-3">
                         <button type="button" @click="isLoginOpen = true" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-6 rounded-xl transition">Увійти</button>
@@ -78,9 +85,18 @@
                     </div>
                 </div>
             @elseif (! $monobank && ! $paypal)
-                <div class="text-center text-gray-700">
-                    <h2 class="text-xl font-bold text-gray-900 mb-2">Онлайн-оплата ще налаштовується</h2>
-                    <p>Щоб отримати статус «Преміум», напишіть адміністратору {!! $admin !!} у Telegram.</p>
+                {{-- Онлайн-оплату вимкнено (PREMIUM_PAYMENTS_ENABLED=false) — статус видає адміністратор --}}
+                <div class="text-center text-gray-700 max-w-xl mx-auto">
+                    <p class="text-4xl mb-2">✈️</p>
+                    <h2 class="text-xl font-bold text-gray-900 mb-2">Статус «Преміум» надається особисто адміністратором ресурсу</h2>
+                    <p class="mb-4">
+                        Щоб отримати його, напишіть адміністратору {!! $admin !!} у Telegram
+                        і вкажіть пошту, з якою ви зареєструвалися: <strong>{{ $user->email }}</strong>.
+                    </p>
+                    <a href="{{ \App\Models\Payment::TELEGRAM_URL }}" target="_blank" rel="noopener"
+                       class="inline-block bg-sky-500 hover:bg-sky-600 text-white font-bold py-3 px-6 rounded-xl transition">
+                        Написати {{ \App\Models\Payment::TELEGRAM_HANDLE }} у Telegram
+                    </a>
                 </div>
             @else
                 <h2 class="text-xl font-bold text-gray-900 mb-4">{{ $isPremium ? 'Продовжити «Преміум» або оформити назавжди' : 'Оберіть спосіб пожертви' }}</h2>
@@ -150,8 +166,10 @@
             @endif
         </div>
 
+        @if (\App\Models\Payment::paymentsEnabled())
         <p class="mt-4 text-center text-sm text-gray-500">
             💛 Кошти пожертв використовуються на оплату хостингу та домену, розвиток і вдосконалення сервісу.
         </p>
+        @endif
     </div>
 @endsection

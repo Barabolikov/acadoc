@@ -39,6 +39,25 @@ class Payment extends Model
         return $this->belongsTo(User::class);
     }
 
+    /** Адміністратор, який видає «Преміум», коли онлайн-оплату вимкнено */
+    public const TELEGRAM_HANDLE = '@Barabolikov';
+
+    public const TELEGRAM_URL = 'https://t.me/Barabolikov';
+
+    /** Чи приймає сайт пожертви онлайн (PREMIUM_PAYMENTS_ENABLED) */
+    public static function paymentsEnabled(): bool
+    {
+        return (bool) config('services.premium.payments_enabled');
+    }
+
+    /** Одне речення про те, як отримати «Преміум» (без HTML) */
+    public static function howToGet(): string
+    {
+        return self::paymentsEnabled()
+            ? 'Статус «Преміум» можна отримати за символічну пожертву: '.self::priceUah().' грн на місяць або '.self::priceUah(self::LIFETIME).' грн назавжди (сторінка «Преміум»).'
+            : 'Статус «Преміум» надається особисто адміністратором ресурсу — напишіть '.self::TELEGRAM_HANDLE.' у Telegram і вкажіть пошту свого облікового запису.';
+    }
+
     /** Сума пожертви за «Преміум» у гривнях: місяць (за замовчуванням) або назавжди */
     public static function priceUah(string $plan = self::MONTH): int
     {

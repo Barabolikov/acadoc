@@ -464,7 +464,7 @@ class NormControlTest extends TestCase
 
         $this->check($this->document([$this->p(self::BODY)], ['sz' => 24, 'line' => 240, 'jc' => 'left', 'ind' => 0]))
             ->assertSee('Виправити помилки')
-            ->assertSee('Отримати «Преміум» від 10 грн', false)
+            ->assertSee('надається особисто адміністратором ресурсу')
             ->assertSee('@Barabolikov')
             ->assertDontSee(route('norm-control.fixed'));
 

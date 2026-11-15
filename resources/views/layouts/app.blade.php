@@ -189,8 +189,8 @@
 
                 <div class="p-3 rounded-lg bg-indigo-50 border border-indigo-100 text-xs text-indigo-900">
                         Студент може виконати {{ \App\Models\User::STUDENT_DAILY_CHECKS }} перевірку на день,
-                        <span class="font-bold">викладач і користувач зі статусом «Преміум» — необмежену кількість перевірок</span>. «Преміум» можна отримати після реєстрації за символічну пожертву: {{ \App\Models\Payment::priceUah() }} грн на місяць або {{ \App\Models\Payment::priceUah('lifetime') }} грн назавжди.
-                        Щоб отримати роль викладача, після реєстрації повідомте адміністратору
+                        <span class="font-bold">викладач і користувач зі статусом «Преміум» — необмежену кількість перевірок</span>. @if (\App\Models\Payment::paymentsEnabled())«Преміум» можна отримати після реєстрації за символічну пожертву: {{ \App\Models\Payment::priceUah() }} грн на місяць або {{ \App\Models\Payment::priceUah('lifetime') }} грн назавжди.@else«Преміум»-акаунт надається особисто адміністратором ресурсу.@endif
+                        Щоб отримати роль викладача@unless (\App\Models\Payment::paymentsEnabled()) або «Преміум»@endunless, після реєстрації повідомте адміністратору
                         <a href="https://t.me/Barabolikov" target="_blank" rel="noopener" class="font-bold text-indigo-700 underline">@Barabolikov</a> у Telegram.
                 </div>
 

@@ -75,7 +75,7 @@
         $faq = [
             ['q' => 'Хто може користуватися сервісом?', 'a' => 'Студенти й викладачі навчального закладу. Зареєструйтеся, обравши «Студент» або «Викладач». Нові облікові записи отримують права студента, а роль викладача підтверджує адміністратор.'],
             ['q' => 'Скільки робіт можна перевірити?', 'a' => 'Студенти можуть перевіряти 1 документ на день; ліміт оновлюється о 00:00 за київським часом. Тож завантажуйте остаточну версію роботи, виправивши все, що можна. Для викладачів і користувачів зі статусом «Преміум» обмежень немає.'],
-            ['q' => 'Що дає статус «Преміум» і як його отримати?', 'a' => 'Безліміт перевірок, автоматичне виправлення помилок оформлення та файли до 20 МБ. Символічна пожертва ' . \App\Models\Payment::priceUah() . ' грн дає «Преміум» на місяць (повторна продовжує його), ' . \App\Models\Payment::priceUah('lifetime') . ' грн — назавжди. Оплата через monobank або PayPal на сторінці «Преміум». Пожертви йдуть на оплату хостингу, домену та розвиток сервісу.'],
+            ['q' => 'Що дає статус «Преміум» і як його отримати?', 'a' => 'Безліміт перевірок, автоматичне виправлення помилок оформлення та файли до 20 МБ. ' . (\App\Models\Payment::paymentsEnabled() ? 'Символічна пожертва ' . \App\Models\Payment::priceUah() . ' грн дає «Преміум» на місяць (повторна продовжує його), ' . \App\Models\Payment::priceUah('lifetime') . ' грн — назавжди. Оплата через monobank або PayPal на сторінці «Преміум». Пожертви йдуть на оплату хостингу, домену та розвиток сервісу.' : \App\Models\Payment::howToGet())],
             ['q' => 'Які файли можна перевірити?', 'a' => 'Документи Microsoft Word у форматі .docx розміром до 5 МБ. Якщо робота в .doc або .pdf, відкрийте її у Word і збережіть як .docx.'],
             ['q' => 'Чи зберігається моя робота на сервері?', 'a' => 'Ні. Файл аналізується одразу після завантаження й не зберігається: у журналі лишаються тільки назва файлу, його контрольна сума й кількість зауважень. Результат бачите лише ви, а за бажанням можете завантажити звіт у форматі Word (.docx).'],
             ['q' => 'Чи замінює перевірка нормоконтролера?', 'a' => 'Ні, вона допомагає підготуватися до нормоконтролю. Сервіс знаходить типові помилки оформлення до того, як ви здасте роботу. Остаточне рішення ухвалює нормоконтролер або керівник.'],
@@ -206,15 +206,21 @@
                 </div>
             @endforeach
 
-            {{-- Заклик до пожертви на розвиток сервісу --}}
+            {{-- Заклик до пожертви на розвиток сервісу (поки оплату вимкнено — про «Преміум» від адміністратора) --}}
             <a href="{{ route('premium') }}" class="flex items-center gap-4 rounded-2xl bg-amber-50 border border-amber-200 hover:border-amber-300 hover:bg-amber-100/60 transition px-3 py-2">
                 <div class="w-12 h-12 shrink-0 rounded-2xl bg-amber-500 text-white flex items-center justify-center">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4.3 6.3a4.5 4.5 0 016.4 0L12 7.6l1.3-1.3a4.5 4.5 0 116.4 6.4L12 20.4l-7.7-7.7a4.5 4.5 0 010-6.4z"/></svg>
                 </div>
                 <div class="min-w-0">
+                    @if (\App\Models\Payment::paymentsEnabled())
                     <p class="font-extrabold text-gray-900 text-lg">Підтримайте Acadoc</p>
                     <p class="text-gray-600 text-sm">{{ \App\Models\Payment::priceUah() }} грн/міс або {{ \App\Models\Payment::priceUah('lifetime') }} грн назавжди — на хостинг і розвиток цього сервісу.
                         <span class="font-bold text-amber-600 whitespace-nowrap">Підтримати →</span></p>
+                    @else
+                    <p class="font-extrabold text-gray-900 text-lg">⭐ Преміум-акаунт</p>
+                    <p class="text-gray-600 text-sm">Безліміт перевірок і автовиправлення. Надається особисто адміністратором ресурсу.
+                        <span class="font-bold text-amber-600 whitespace-nowrap">Детальніше →</span></p>
+                    @endif
                 </div>
             </a>
         </div>
@@ -329,21 +335,32 @@
             <div class="grid lg:grid-cols-[1.4fr_1fr] gap-7 items-center">
                 <div>
                     <p class="text-amber-600 font-bold uppercase tracking-wider text-sm mb-3">⭐ Преміум-акаунт</p>
+                    @if (\App\Models\Payment::paymentsEnabled())
                     <h2 class="text-2xl sm:text-3xl font-extrabold text-gray-900 mb-3">Символічна пожертва на розвиток проєкту</h2>
                     <p class="text-gray-700 mb-4">
                         Acadoc — некомерційний проєкт студентського гуртка «WEB DEVELOPER». Підтримайте його символічною пожертвою
                         <strong>{{ \App\Models\Payment::priceUah() }} грн на місяць</strong> або <strong>{{ \App\Models\Payment::priceUah('lifetime') }} грн назавжди</strong> — і отримайте статус «Преміум» автоматично, одразу після переказу.
                     </p>
+                    @else
+                    <h2 class="text-2xl sm:text-3xl font-extrabold text-gray-900 mb-3">Більше можливостей зі статусом «Преміум»</h2>
+                    <p class="text-gray-700 mb-4">
+                        Acadoc — некомерційний проєкт студентського гуртка «WEB DEVELOPER». <strong>Статус «Преміум» надається особисто адміністратором ресурсу.</strong>
+                        Напишіть адміністратору <a href="{{ \App\Models\Payment::TELEGRAM_URL }}" target="_blank" rel="noopener" class="font-bold underline">{{ \App\Models\Payment::TELEGRAM_HANDLE }}</a> у Telegram і вкажіть пошту, з якою ви зареєструвалися.
+                    </p>
+                    @endif
                     <ul class="grid sm:grid-cols-2 gap-2 text-gray-700 mb-4">
                         @foreach (['Безліміт перевірок щодня', 'Автоматичне виправлення помилок', 'Файли до '.\App\Http\Controllers\NormControlController::PREMIUM_MAX_UPLOAD_MB.' МБ замість '.\App\Http\Controllers\NormControlController::MAX_UPLOAD_MB.' МБ', 'Виправлена робота — одним файлом'] as $item)
                             <li class="flex gap-2"><svg class="w-6 h-6 shrink-0 text-amber-500" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>{{ $item }}</li>
                         @endforeach
                     </ul>
+                    @if (\App\Models\Payment::paymentsEnabled())
                     <p class="text-sm text-gray-600 bg-white/70 border border-amber-100 rounded-xl p-3">
                         💛 Усі пожертви йдуть на <strong>оплату хостингу та домену</strong>, а також на <strong>розвиток і вдосконалення сервісу</strong> — нові перевірки, точніші виправлення й підтримку роботи для студентів коледжу.
                     </p>
+                    @endif
                 </div>
                 <div class="rounded-2xl bg-white border border-amber-200 shadow-sm p-6 text-center">
+                    @if (\App\Models\Payment::paymentsEnabled())
                     <div class="grid grid-cols-2 gap-3 mb-4">
                         <div class="rounded-xl border border-gray-200 p-3">
                             <p class="text-sm text-gray-500">На місяць</p>
@@ -358,6 +375,13 @@
                     <a href="{{ route('premium') }}" class="block w-full bg-amber-500 hover:bg-amber-600 text-white font-bold py-3 px-6 rounded-xl shadow-sm transition">
                         Отримати «Преміум»
                     </a>
+                    @else
+                    <p class="text-5xl mb-2">✈️</p>
+                    <p class="text-gray-700 mb-4">Статус «Преміум» надається особисто адміністратором ресурсу. Напишіть у Telegram і вкажіть пошту свого облікового запису.</p>
+                    <a href="{{ \App\Models\Payment::TELEGRAM_URL }}" target="_blank" rel="noopener" class="block w-full bg-sky-500 hover:bg-sky-600 text-white font-bold py-3 px-6 rounded-xl shadow-sm transition">
+                        Написати {{ \App\Models\Payment::TELEGRAM_HANDLE }}
+                    </a>
+                    @endif
                 </div>
             </div>
         </div>
