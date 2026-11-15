@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Users\Tables;
 
 use App\Models\User;
 use Filament\Actions\Action;
+use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
@@ -40,6 +41,7 @@ class UsersTable
                     ->color(fn (string $state): string => match ($state) {
                         User::ROLE_ADMIN => 'danger',
                         User::ROLE_TEACHER => 'success',
+                        User::ROLE_PREMIUM => 'warning',
                         default => 'gray',
                     }),
                 TextColumn::make('requested_role')
@@ -85,20 +87,65 @@ class UsersTable
                     ->preload(),
             ])
             ->recordActions([
-                Action::make('makeTeacher')
-                    ->label('Призначити викладачем')
-                    ->icon('heroicon-o-academic-cap')
-                    ->color('success')
-                    ->visible(fn (User $record): bool => self::hasPendingTeacherRequest($record))
-                    ->requiresConfirmation()
-                    ->modalHeading(fn (User $record): string => "Призначити {$record->name} викладачем?")
-                    ->modalDescription('Роль «Студент» буде замінено на «Викладач»: для користувача зніметься денний ліміт перевірок.')
-                    ->action(function (User $record): void {
-                        $record->removeRole(User::ROLE_STUDENT);
-                        $record->assignRole(Role::findOrCreate(User::ROLE_TEACHER, 'web'));
+                ActionGroup::make([
+                    Action::make('makeTeacher')
+                        ->label('Призначити викладачем')
+                        ->icon('heroicon-o-academic-cap')
+                        ->color('success')
+                        ->visible(fn (User $record): bool => ! $record->hasRole(User::ROLE_TEACHER))
+                        ->requiresConfirmation()
+                        ->modalHeading(fn (User $record): string => "Призначити {$record->name} викладачем?")
+                        ->modalDescription('Роль «Студент» буде замінено на «Викладач»: для користувача зніметься денний ліміт перевірок.')
+                        ->action(function (User $record): void {
+                            $record->removeRole(User::ROLE_STUDENT);
+                            $record->assignRole(Role::findOrCreate(User::ROLE_TEACHER, 'web'));
 
-                        Notification::make()->title("{$record->name} тепер викладач")->success()->send();
-                    }),
+                            Notification::make()->title("{$record->name} тепер викладач")->success()->send();
+                        }),
+                    Action::make('removeTeacher')
+                        ->label('Зняти роль викладача')
+                        ->icon('heroicon-o-arrow-uturn-down')
+                        ->color('gray')
+                        ->visible(fn (User $record): bool => $record->hasRole(User::ROLE_TEACHER))
+                        ->requiresConfirmation()
+                        ->modalHeading(fn (User $record): string => "Зняти з {$record->name} роль викладача?")
+                        ->modalDescription('Користувач знову стане студентом з денним лімітом перевірок.')
+                        ->action(function (User $record): void {
+                            $record->removeRole(User::ROLE_TEACHER);
+                            $record->assignRole(Role::findOrCreate(User::ROLE_STUDENT, 'web'));
+
+                            Notification::make()->title("{$record->name} тепер студент")->success()->send();
+                        }),
+                    Action::make('grantPremium')
+                        ->label('Надати «Преміум»')
+                        ->icon('heroicon-o-star')
+                        ->color('warning')
+                        ->visible(fn (User $record): bool => ! $record->hasRole(User::ROLE_PREMIUM))
+                        ->requiresConfirmation()
+                        ->modalHeading(fn (User $record): string => "Надати {$record->name} статус «Преміум»?")
+                        ->modalDescription('Користувачу стане доступне автоматичне виправлення помилок у роботі.')
+                        ->action(function (User $record): void {
+                            $record->assignRole(Role::findOrCreate(User::ROLE_PREMIUM, 'web'));
+
+                            Notification::make()->title("{$record->name} отримав статус «Преміум»")->success()->send();
+                        }),
+                    Action::make('revokePremium')
+                        ->label('Скасувати «Преміум»')
+                        ->icon('heroicon-o-x-circle')
+                        ->color('danger')
+                        ->visible(fn (User $record): bool => $record->hasRole(User::ROLE_PREMIUM))
+                        ->requiresConfirmation()
+                        ->modalHeading(fn (User $record): string => "Скасувати статус «Преміум» для {$record->name}?")
+                        ->action(function (User $record): void {
+                            $record->removeRole(User::ROLE_PREMIUM);
+
+                            Notification::make()->title("Статус «Преміум» для {$record->name} скасовано")->success()->send();
+                        }),
+                ])
+                    ->label('Статус')
+                    ->icon('heroicon-o-identification')
+                    ->button()
+                    ->color('gray'),
                 EditAction::make(),
             ])
             ->toolbarActions([

@@ -6,6 +6,7 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Storage;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 use ZipArchive;
@@ -455,6 +456,66 @@ class NormControlTest extends TestCase
             ->assertDontSee('Наразі це базова перевірка');
     }
 
+    // --- Автовиправлення помилок (Преміум) ---
+
+    public function test_fix_button_is_locked_without_premium(): void
+    {
+        Storage::fake('local');
+
+        $this->check($this->document([$this->p(self::BODY)], ['sz' => 24, 'line' => 240, 'jc' => 'left', 'ind' => 0]))
+            ->assertSee('Виправити помилки')
+            ->assertSee('Для отримання статусу «Преміум» зверніться до адміністратора', false)
+            ->assertSee('@Barabolikov')
+            ->assertDontSee(route('norm-control.fixed'));
+
+        $this->get(route('norm-control.fixed'))->assertRedirect(route('norm-control.index'));
+        $this->assertSame([], Storage::disk('local')->allFiles());
+    }
+
+    public function test_premium_user_downloads_fixed_document(): void
+    {
+        Storage::fake('local');
+        $user = $this->userWithRole(User::ROLE_PREMIUM);
+        $sectPr = '<w:sectPr><w:pgSz w:w="12240" w:h="15840"/><w:pgMar w:top="1134" w:right="567" w:bottom="1134" w:left="1134"/></w:sectPr>';
+        $doc = $this->document(
+            [$this->p(self::BODY), $this->p(self::BODY, '', '<w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>'), $this->p('1.1 Загальні відомості.'), $this->p('ВИСНОВКИ', '<w:jc w:val="left"/>')],
+            ['sz' => 24, 'line' => 240, 'jc' => 'left', 'ind' => 0],
+            ['sectPr' => $sectPr],
+        );
+
+        $this->upload($user, $doc)->assertOk()
+            ->assertSee(route('norm-control.fixed'))
+            ->assertSee('Сервіс виправив у вашій роботі');
+
+        $response = $this->actingAs($user)->get(route('norm-control.fixed'));
+        $response->assertOk();
+        $this->assertStringContainsString(rawurlencode('robota-виправлено.docx'), $response->headers->get('Content-Disposition'));
+
+        $fixedPath = tempnam(sys_get_temp_dir(), 'fixed');
+        file_put_contents($fixedPath, $response->streamedContent());
+        $before = array_column($this->check($doc)->viewData('actionableErrors'), 'type');
+        $after = array_column($this->check($fixedPath)->viewData('actionableErrors'), 'type');
+
+        // Помилки, які виправляє сервіс, були — і зникли
+        foreach (['Форматування (Шрифт)', 'Форматування (Гарнітура)', 'Форматування (Інтервал)', 'Форматування (Вирівнювання)',
+            'Форматування (Абзац)', 'Форматування (Сторінка)', 'Форматування (Поля)', 'Оформлення (Заголовки)', 'Оформлення (Нова сторінка)'] as $type) {
+            $this->assertContains($type, $before);
+            $this->assertNotContains($type, $after, "Лишилася помилка типу «{$type}»");
+        }
+    }
+
+    public function test_new_check_replaces_previous_fixed_document(): void
+    {
+        Storage::fake('local');
+        $user = $this->userWithRole(User::ROLE_PREMIUM);
+        $doc = $this->document([$this->p(self::BODY)], ['sz' => 24, 'line' => 240, 'jc' => 'left', 'ind' => 0]);
+
+        $this->upload($user, $doc)->assertOk();
+        $this->upload($user, $doc)->assertOk();
+
+        $this->assertCount(1, Storage::disk('local')->allFiles());
+    }
+
     // --- Підписи рисунків і таблиць, посилання на них ---
 
     private function figure(): string
@@ -751,7 +812,7 @@ class NormControlTest extends TestCase
     {
         $doc = $this->document([$this->p(self::BODY)]);
 
-        foreach ([User::ROLE_TEACHER, User::ROLE_ADMIN] as $role) {
+        foreach ([User::ROLE_TEACHER, User::ROLE_ADMIN, User::ROLE_PREMIUM] as $role) {
             $user = $this->userWithRole($role);
             // Навіть якщо в нього лишилася роль студента
             $user->assignRole(Role::findOrCreate(User::ROLE_STUDENT, 'web'));

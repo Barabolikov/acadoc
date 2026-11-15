@@ -295,14 +295,62 @@
             <div class="max-w-xl w-full bg-blue-50 border border-blue-100 rounded-lg p-4 text-sm text-blue-800 text-center">
                 <strong>ℹ️ Примітка:</strong> Отриманий файл звіту слід надіслати керівнику проєкту.
             </div>
-            <form action="{{ route('norm-control.download') }}" method="POST">
-                @csrf
-                {{-- Дані звіту беруться із сесії на сервері (див. NormControlController::downloadReport) --}}
+            <div class="flex flex-col sm:flex-row items-center gap-3">
+                <form action="{{ route('norm-control.download') }}" method="POST">
+                    @csrf
+                    {{-- Дані звіту беруться із сесії на сервері (див. NormControlController::downloadReport) --}}
 
-                <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 px-8 rounded-2xl shadow-lg transition-all flex items-center gap-3">
-                    <span>📥 Завантажити звіт (.docx)</span>
-                </button>
-            </form>
+                    <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 px-8 rounded-2xl shadow-lg transition-all flex items-center gap-3">
+                        <span>📥 Завантажити звіт (.docx)</span>
+                    </button>
+                </form>
+
+                {{-- Автовиправлення (DocxFixer) — для статусу «Преміум» --}}
+                @if ($isPremium && $fixed)
+                    <a href="{{ route('norm-control.fixed') }}"
+                       class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-4 px-8 rounded-2xl shadow-lg transition-all flex items-center gap-3">
+                        <span>🛠️ Виправити помилки</span>
+                    </a>
+                @else
+                    <button type="button" disabled title="Доступно зі статусом «Преміум»"
+                            class="bg-gray-200 text-gray-500 font-bold py-4 px-8 rounded-2xl cursor-not-allowed flex items-center gap-3">
+                        <span>🛠️ Виправити помилки</span>
+                        <span class="text-xs font-bold uppercase bg-amber-400 text-amber-950 rounded px-2 py-0.5">Преміум</span>
+                    </button>
+                @endif
+            </div>
+
+            @if ($isPremium && $fixed)
+                <div class="max-w-xl w-full bg-emerald-50 border border-emerald-200 rounded-lg p-4 text-sm text-emerald-900">
+                    @if ($fixed['fixes'])
+                        <p class="font-bold mb-1">Сервіс виправив у вашій роботі:</p>
+                        <ul class="list-disc pl-5 space-y-0.5">
+                            @foreach ($fixed['fixes'] as $op => $count)
+                                <li>{{ \App\Services\NormControl\DocxFixer::LABELS[$op] ?? $op }} — {{ $count }}</li>
+                            @endforeach
+                        </ul>
+                    @else
+                        <p class="font-bold">Помилок, які можна виправити автоматично, не знайдено.</p>
+                    @endif
+                    @if ($fixed['manual'] > 0)
+                        <p class="mt-2">Ще {{ $fixed['manual'] }} зауважень (посилання, підписи, рамка, зміст тощо) потрібно виправити вручну — див. звіт.</p>
+                    @endif
+                    <p class="mt-2 text-xs text-emerald-700">
+                        <a href="{{ route('norm-control.fixed') }}" class="font-bold underline">Завантажити виправлену роботу</a>.
+                        Посилання діє 24 години. Перегляньте файл перед здачею та оновіть зміст (ПКМ → Оновити поле).
+                    </p>
+                </div>
+            @elseif ($isPremium)
+                <div class="max-w-xl w-full bg-red-50 border border-red-200 rounded-lg p-4 text-sm text-red-800 text-center">
+                    Не вдалося автоматично виправити цей документ. Виправте помилки вручну за звітом.
+                </div>
+            @else
+                <div class="max-w-xl w-full bg-amber-50 border border-amber-200 rounded-lg p-4 text-sm text-amber-900 text-center">
+                    Сервіс може сам виправити шрифт, інтервали, відступи, поля й заголовки та дати посилання на виправлену роботу. Статус «Преміум» також знімає денний ліміт перевірок.
+                    Для отримання статусу «Преміум» зверніться до адміністратора
+                    <a href="https://t.me/Barabolikov" target="_blank" rel="noopener" class="font-bold underline">@Barabolikov</a> у Telegram.
+                </div>
+            @endif
         </div>
     </div>
 @endsection

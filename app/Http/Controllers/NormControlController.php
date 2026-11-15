@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Services\NormControl\AppendixChecks;
 use App\Services\NormControl\CaptionChecks;
 use App\Services\NormControl\CitationChecks;
+use App\Services\NormControl\DocxFixer;
 use App\Services\NormControl\FormulaChecks;
 use App\Services\NormControl\FrameChecks;
 use App\Services\NormControl\PageSetupChecks;
@@ -16,6 +17,8 @@ use App\Services\NormControl\ReportDocx;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Illuminate\Http\Request;
 use ZipArchive;
 
@@ -37,6 +40,11 @@ class NormControlController extends Controller
     public const MAX_UPLOAD_MB = 5;
 
     public const MAX_UPLOAD_KB = self::MAX_UPLOAD_MB * 1024;
+
+    /** Тека тимчасових виправлених робіт (диск local = storage/app/private) */
+    private const FIXED_DIR = 'fixed';
+
+    public const PREMIUM_MESSAGE = 'Автоматичне виправлення помилок доступне користувачам зі статусом «Преміум». Для отримання статусу зверніться до адміністратора @Barabolikov у Telegram.';
 
     /** Скільки прикладів однієї помилки форматування показувати у звіті */
     private const MAX_EXAMPLES_PER_RULE = 5;
@@ -184,7 +192,8 @@ class NormControlController extends Controller
     public static function limitMessage(): string
     {
         return 'Студенти можуть перевіряти ' . User::STUDENT_DAILY_CHECKS . ' документ на день. '
-            . 'Ліміт на сьогодні вичерпано — наступна перевірка буде доступна завтра (з 00:00 за київським часом).';
+            . 'Ліміт на сьогодні вичерпано — наступна перевірка буде доступна завтра (з 00:00 за київським часом). '
+            . 'Безліміт перевірок дає статус «Преміум» (зверніться до адміністратора @Barabolikov у Telegram).';
     }
 
     private function analyze(Request $request, UploadedFile $file)
@@ -264,6 +273,12 @@ class NormControlController extends Controller
             // Порушення форматування основного тексту: rule => ['count' => N, 'examples' => [...]]
             $bodyViolations = [];
             $bodyParagraphsChecked = 0;
+            // План автовиправлення (Преміум): індекс абзацу => ['text' => ..., 'ops' => [...]]
+            $fixPlan = [];
+            $planFix = function (int $pi, string $text, string $op) use (&$fixPlan) {
+                $fixPlan[$pi]['text'] = $text;
+                $fixPlan[$pi]['ops'][] = $op;
+            };
 
             $physicalTablesCount = substr_count($xmlContent, '<w:tbl>');
             $physicalImagesCount = substr_count($xmlContent, '<w:drawing>') + preg_match_all('/<v:shape[ >]/', $xmlContent);
@@ -408,17 +423,21 @@ class NormControlController extends Controller
 
                         if (!$startsOnNewPage && !$headingProps['pageBreakBefore']) {
                             $actionableErrors[] = ['type' => 'Оформлення (Нова сторінка)', 'message' => 'Перед заголовком немає розриву сторінки (має починатися з нової сторінки)', 'location' => $headingAt, 'context' => 'Вставлення → Розрив сторінки (Ctrl+Enter) або Абзац → «З нової сторінки»'];
+                            $planFix($pi, $lineText, 'pageBreak');
                         }
                         if ($lineText !== $upperLine) {
                             $textCase = $styles->textCase($rawP);
                             if ($textCase === 'smallCaps') {
                                 $actionableErrors[] = ['type' => 'Оформлення (Заголовки)', 'message' => 'Заголовок набрано капітеллю, треба ВЕЛИКИМИ літерами', 'location' => $headingAt, 'context' => 'Шрифт → зніміть «Капітель» і ввімкніть «Усі великі»'];
+                                $planFix($pi, $lineText, 'caps');
                             } elseif ($textCase !== 'caps') {
                                 $actionableErrors[] = ['type' => 'Оформлення (Заголовки)', 'message' => 'Треба ВЕЛИКИМИ літерами', 'location' => $headingAt, 'context' => 'Головна → Регістр → ВСІ ВЕЛИКІ'];
+                                $planFix($pi, $lineText, 'caps');
                             }
                         }
                         if ($headingProps['jc'] !== 'center') {
                             $actionableErrors[] = ['type' => 'Форматування (Вирівнювання)', 'message' => 'Заголовок має бути по центру', 'location' => $headingAt, 'context' => 'Головна → Вирівнювання по центру'];
+                            $planFix($pi, $lineText, 'center');
                         }
                     }
 
@@ -438,6 +457,7 @@ class NormControlController extends Controller
                     // Крапки та Суржик/Я
                     if ($isHeadingLine && mb_substr($lineText, -1) === '.' && !preg_match('/^[\d\.\s]+$/', $lineText)) {
                         $actionableErrors[] = [ 'type' => 'Оформлення (Заголовки)', 'message' => 'Приберіть крапку в кінці.', 'location' => $currentSection, 'context' => $lineText ];
+                        $planFix($pi, $lineText, 'dot');
                     }
                     if (preg_match('/(?<=^|\s)я(?=\s|[.,!?:;]|$)/iu', $lineText)) {
                         $actionableErrors[] = [ 'type' => 'Стилістика', 'message' => 'Знайдено "я", треба "ми".', 'location' => $currentSection, 'context' => mb_substr($lineText, 0, 50) ];
@@ -449,7 +469,8 @@ class NormControlController extends Controller
                         && !self::isCodeFont(($props = $styles->paragraphProps($rawP))['font'])) {
                         $bodyParagraphsChecked++;
                         $example = ['location' => $currentSection, 'context' => mb_substr($lineText, 0, 50)];
-                        $violationsBefore = array_sum(array_map('count', $bodyViolations));
+                        $countsBefore = array_map('count', $bodyViolations);
+                        $violationsBefore = array_sum($countsBefore);
                         $bodyFontWeights[$props['font'] ?? 'Times New Roman'] = ($bodyFontWeights[$props['font'] ?? 'Times New Roman'] ?? 0) + mb_strlen($lineText);
 
                         // Гарнітура (з урахуванням стилів і шрифтів теми)
@@ -486,6 +507,12 @@ class NormControlController extends Controller
                             $bodyViolations['indent'][] = $example + ['message' => "Абзацний відступ $cm см (треба 1,25 см)"];
                         }
 
+                        // Які правила порушив саме цей абзац — їх і виправить DocxFixer
+                        foreach ($bodyViolations as $rule => $list) {
+                            if (count($list) > ($countsBefore[$rule] ?? 0)) {
+                                $planFix($pi, $lineText, $rule);
+                            }
+                        }
                         if (array_sum(array_map('count', $bodyViolations)) > $violationsBefore) {
                             $bodyParagraphsWithIssues++;
                         }
@@ -604,6 +631,12 @@ class NormControlController extends Controller
             // Звіт (DOCX) будується з цих даних на сервері, а не з полів форми, які можна підмінити
             session(['norm_control_report' => $report]);
 
+            // Преміум: виправлена копія роботи (тимчасово, доки не завантажать або не мине доба)
+            $isPremium = (bool) $request->user()?->isPremium();
+            $fixed = $isPremium ? $this->buildFixedDocument($tempPath, $fileName, $fixPlan, $actionableErrors) : null;
+            $this->forgetFixedDocument($request);
+            session(['norm_control_fixed' => $fixed]);
+
             return view('norm-control.results', [
                 'report' => $report,
                 'errorsCount' => count($actionableErrors),
@@ -620,10 +653,76 @@ class NormControlController extends Controller
                 'studentName' => $titlePage['student'] ?? 'Не знайдено',
                 'supervisorName' => $titlePage['supervisor'] ?? 'Не знайдено',
                 'checkDate' => $checkDate,
+                'isPremium' => $isPremium,
+                'fixed' => $fixed,
             ]);
         }
         return back()->withErrors(['document' => 'Помилка архіву.']);
     }
+    /**
+     * Виправляє документ (DocxFixer) і тимчасово зберігає копію в storage/app/private/fixed.
+     *
+     * @return array{token: string, name: string, fixes: array<string, int>, manual: int}|null
+     */
+    private function buildFixedDocument(string $path, string $fileName, array $plan, array $errors): ?array
+    {
+        self::purgeOldFixedFiles();
+
+        $result = DocxFixer::fix($path, $plan);
+        if ($result === null) {
+            return null;
+        }
+
+        $token = Str::random(40);
+        Storage::disk('local')->put(self::FIXED_DIR . "/{$token}.docx", $result['content']);
+
+        return [
+            'token' => $token,
+            'name' => pathinfo($fileName, PATHINFO_FILENAME) . '-виправлено.docx',
+            'fixes' => $result['fixes'],
+            'manual' => count(array_filter($errors, fn ($e) => !in_array($e['type'], DocxFixer::FIXABLE_TYPES, true))),
+        ];
+    }
+
+    /** Видаляє виправлену копію попередньої перевірки цього користувача */
+    private function forgetFixedDocument(Request $request): void
+    {
+        $token = $request->session()->pull('norm_control_fixed.token');
+        if (is_string($token)) {
+            Storage::disk('local')->delete(self::FIXED_DIR . "/{$token}.docx");
+        }
+    }
+
+    /** Виправлені роботи зберігаються не довше доби */
+    private static function purgeOldFixedFiles(): void
+    {
+        $disk = Storage::disk('local');
+        foreach ($disk->files(self::FIXED_DIR) as $file) {
+            if ($disk->lastModified($file) < now()->subDay()->getTimestamp()) {
+                $disk->delete($file);
+            }
+        }
+    }
+
+    /** Завантаження виправленої роботи (лише Преміум, лише з власної сесії) */
+    public function downloadFixed(Request $request)
+    {
+        if (!$request->user()->isPremium()) {
+            return redirect()->route('norm-control.index')->withErrors(['document' => self::PREMIUM_MESSAGE]);
+        }
+
+        $fixed = $request->session()->get('norm_control_fixed');
+        $path = $fixed ? self::FIXED_DIR . "/{$fixed['token']}.docx" : null;
+        if (!$path || !Storage::disk('local')->exists($path)) {
+            return redirect()->route('norm-control.index')
+                ->withErrors(['document' => 'Виправлений файл не знайдено або минула доба. Перевірте роботу ще раз.']);
+        }
+
+        return Storage::disk('local')->download($path, $fixed['name'], [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        ]);
+    }
+
     /** Звіт у форматі Word, зібраний з даних останньої перевірки в сесії */
     public function downloadReport(Request $request)
     {

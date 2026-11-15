@@ -57,6 +57,7 @@
                     <a href="/#checks" class="hover:text-indigo-600 transition">Що перевіряємо</a>
                     <a href="/#how" class="hover:text-indigo-600 transition">Як це працює</a>
                     <a href="/#faq" class="hover:text-indigo-600 transition">FAQ</a>
+                    <a href="{{ route('rules') }}" class="hover:text-indigo-600 transition">Правила</a>
                 </div>
 
                 @auth
@@ -187,7 +188,7 @@
 
                 <div class="p-3 rounded-lg bg-indigo-50 border border-indigo-100 text-xs text-indigo-900">
                         Студент може виконати {{ \App\Models\User::STUDENT_DAILY_CHECKS }} перевірку на день,
-                        <span class="font-bold">викладач — необмежену кількість перевірок</span>.
+                        <span class="font-bold">викладач і користувач зі статусом «Преміум» — необмежену кількість перевірок</span>.
                         Щоб отримати роль викладача, після реєстрації повідомте адміністратору
                         <a href="https://t.me/Barabolikov" target="_blank" rel="noopener" class="font-bold text-indigo-700 underline">@Barabolikov</a> у Telegram.
                 </div>
@@ -239,6 +240,9 @@
                 <button type="submit" class="w-full bg-indigo-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-indigo-700 transition">
                     Зареєструватися
                 </button>
+                <p class="text-center text-xs text-gray-500">
+                    Реєструючись, ви погоджуєтеся з <a href="{{ route('rules') }}" target="_blank" class="font-semibold text-indigo-600 hover:underline">Правилами сервісу</a>.
+                </p>
                 <p class="text-center text-sm text-gray-500">
                     Вже маєте обліковий запис?
                     <button type="button" @click="isRegisterOpen = false; isLoginOpen = true" class="font-semibold text-indigo-600 hover:underline">Увійти</button>
@@ -281,6 +285,7 @@
                     <li><a href="/#checks" class="hover:text-white transition">Що перевіряється</a></li>
                     <li><a href="/#how" class="hover:text-white transition">Як це працює</a></li>
                     <li><a href="/#faq" class="hover:text-white transition">Часті запитання</a></li>
+                    <li><a href="{{ route('rules') }}" class="hover:text-white transition">Правила сервісу</a></li>
                     @auth
                         <li><a href="{{ route('norm-control.index') }}" class="hover:text-white transition">Нормоконтроль</a></li>
                     @endauth

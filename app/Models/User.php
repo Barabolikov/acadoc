@@ -25,6 +25,9 @@ class User extends Authenticatable implements FilamentUser
 
     public const ROLE_ADMIN = 'super_admin';
 
+    /** Платний статус: автоматичне виправлення помилок у роботі (надає адміністратор) */
+    public const ROLE_PREMIUM = 'Преміум';
+
     /** Скільки документів студент може перевірити за добу */
     public const STUDENT_DAILY_CHECKS = 1;
 
@@ -89,10 +92,16 @@ class User extends Authenticatable implements FilamentUser
         return $this->hasRole(self::ROLE_ADMIN);
     }
 
-    /** Чи діє для користувача денний ліміт перевірок (студент без вищих ролей). */
+    /** Чи доступне автоматичне виправлення помилок */
+    public function isPremium(): bool
+    {
+        return $this->hasAnyRole([self::ROLE_PREMIUM, self::ROLE_ADMIN]);
+    }
+
+    /** Чи діє для користувача денний ліміт перевірок (студент без ролі викладача чи «Преміум»). */
     public function hasDailyCheckLimit(): bool
     {
-        return $this->hasRole(self::ROLE_STUDENT) && ! $this->hasAnyRole([self::ROLE_ADMIN, self::ROLE_TEACHER]);
+        return $this->hasRole(self::ROLE_STUDENT) && ! $this->hasAnyRole([self::ROLE_ADMIN, self::ROLE_TEACHER, self::ROLE_PREMIUM]);
     }
 
     /** Скільки перевірок лишилося сьогодні; null — без обмежень. */

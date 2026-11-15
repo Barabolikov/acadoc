@@ -89,6 +89,37 @@ class RegistrationTest extends TestCase
         $this->assertFalse($applicant->hasDailyCheckLimit());
     }
 
+    public function test_rules_page_is_public_and_linked_from_registration(): void
+    {
+        $this->get(route('rules'))->assertOk()
+            ->assertSee('Правила сервісу')
+            ->assertSee('Автоматичне виправлення («Преміум»)', false)
+            ->assertSee('@Barabolikov');
+
+        $this->get('/')->assertSee(route('rules'));
+    }
+
+    public function test_admin_grants_and_revokes_premium_and_teacher_role(): void
+    {
+        $admin = User::factory()->create();
+        $admin->assignRole(Role::findOrCreate(User::ROLE_ADMIN, 'web'));
+        $student = User::factory()->create(['requested_role' => 'student']);
+        $student->assignRole(Role::findOrCreate(User::ROLE_STUDENT, 'web'));
+
+        $this->actingAs($admin);
+        Livewire::test(ListUsers::class)->callAction(TestAction::make('grantPremium')->table($student));
+        $this->assertTrue($student->fresh()->isPremium());
+
+        // Викладача можна призначити й без заявки, а потім зняти роль
+        Livewire::test(ListUsers::class)->callAction(TestAction::make('makeTeacher')->table($student));
+        $this->assertTrue($student->fresh()->hasRole(User::ROLE_TEACHER));
+        Livewire::test(ListUsers::class)->callAction(TestAction::make('removeTeacher')->table($student));
+        $this->assertEqualsCanonicalizing([User::ROLE_PREMIUM, User::ROLE_STUDENT], $student->fresh()->getRoleNames()->all());
+
+        Livewire::test(ListUsers::class)->callAction(TestAction::make('revokePremium')->table($student));
+        $this->assertFalse($student->fresh()->isPremium());
+    }
+
     public function test_only_admin_can_access_admin_panel(): void
     {
         $student = User::factory()->create();

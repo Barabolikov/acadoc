@@ -8,6 +8,8 @@ Route::get('/', function () {
     return view('index');
 });
 
+Route::view('/rules', 'rules')->name('rules');
+
 // Маршрути для авторизації на фронтенді
 Route::post('/login-process', [FrontendAuthController::class, 'login'])->middleware('throttle:10,1')->name('frontend.login');
 Route::post('/register-process', [FrontendAuthController::class, 'register'])->middleware('throttle:5,1')->name('frontend.register');
@@ -23,4 +25,5 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/norm-control', [NormControlController::class, 'index'])->name('norm-control.index');
     Route::post('/norm-control/process', [NormControlController::class, 'process'])->name('norm-control.process');
     Route::post('/norm-control/download', [NormControlController::class, 'downloadReport'])->name('norm-control.download');
+    Route::get('/norm-control/fixed', [NormControlController::class, 'downloadFixed'])->name('norm-control.fixed');
 });
