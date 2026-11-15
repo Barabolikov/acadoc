@@ -347,8 +347,13 @@
             @else
                 <div class="max-w-xl w-full bg-amber-50 border border-amber-200 rounded-lg p-4 text-sm text-amber-900 text-center">
                     Сервіс може сам виправити шрифт, інтервали, відступи, поля й заголовки та дати посилання на виправлену роботу. Статус «Преміум» також знімає денний ліміт перевірок.
+                    @if (\App\Models\Payment::paymentsEnabled())
                     Статус «Преміум» можна отримати за символічну пожертву на розвиток проєкту: {{ \App\Models\Payment::priceUah() }} грн на місяць або {{ \App\Models\Payment::priceUah('lifetime') }} грн назавжди.
                     <a href="{{ route('premium') }}" class="mt-2 block w-fit mx-auto bg-amber-500 hover:bg-amber-600 text-white font-bold py-2 px-5 rounded-lg transition">⭐ Отримати «Преміум» від {{ \App\Models\Payment::priceUah() }} грн</a>
+                    @else
+                    Статус «Преміум» надається особисто адміністратором ресурсу — напишіть у Telegram і вкажіть пошту свого облікового запису.
+                    <a href="{{ \App\Models\Payment::TELEGRAM_URL }}" target="_blank" rel="noopener" class="mt-2 block w-fit mx-auto bg-amber-500 hover:bg-amber-600 text-white font-bold py-2 px-5 rounded-lg transition">⭐ Написати {{ \App\Models\Payment::TELEGRAM_HANDLE }}</a>
+                    @endif
                 </div>
             @endif
         </div>

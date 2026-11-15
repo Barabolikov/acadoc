@@ -15,7 +15,7 @@ class PayPal
 {
     public static function enabled(): bool
     {
-        return filled(config('services.paypal.client_id')) && filled(config('services.paypal.secret'));
+        return Payment::paymentsEnabled() && filled(config('services.paypal.client_id')) && filled(config('services.paypal.secret'));
     }
 
     private static function api(): string

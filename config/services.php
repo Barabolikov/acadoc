@@ -46,6 +46,8 @@ return [
     'premium' => [
         'price_uah' => (int) env('PREMIUM_PRICE_UAH', 10),                     // на місяць
         'lifetime_price_uah' => (int) env('PREMIUM_LIFETIME_PRICE_UAH', 100),  // назавжди
+        // false — онлайн-оплату приховано, «Преміум» видає адміністратор на запит у Telegram
+        'payments_enabled' => (bool) env('PREMIUM_PAYMENTS_ENABLED', false),
     ],
 
     // monobank: банка для пожертв + особистий API (https://api.monobank.ua/)
