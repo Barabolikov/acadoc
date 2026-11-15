@@ -3,12 +3,28 @@
 @section('title', 'Нормоконтроль документів | Acadoc')
 
 @section('content')
-    <div class="max-w-4xl mx-auto px-4 py-12">
+    <div class="max-w-4xl mx-auto px-4 py-6">
 
-        <div class="mb-8">
+        <div class="mb-4">
             <h1 class="text-3xl font-extrabold text-gray-900 mb-2">Нормоконтроль документів</h1>
             <p class="text-gray-600">Завантажте вашу курсову або дипломну роботу у форматі .docx для автоматичної перевірки оформлення.</p>
         </div>
+
+        {{-- Денний ліміт для студентів ($remainingChecks === null — без обмежень) --}}
+        @if ($remainingChecks !== null)
+            <div class="mb-6 flex items-start gap-3 rounded-xl border p-4 {{ $remainingChecks > 0 ? 'bg-indigo-50 border-indigo-100 text-indigo-900' : 'bg-amber-50 border-amber-200 text-amber-900' }}">
+                <svg class="w-6 h-6 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                <div class="text-sm">
+                    @if ($remainingChecks > 0)
+                        <p class="font-bold">Сьогодні доступно перевірок: {{ $remainingChecks }} з {{ $dailyLimit }}</p>
+                        <p>Студенти можуть перевіряти {{ $dailyLimit }} документ на день. Перед завантаженням переконайтеся, що обрали остаточну версію роботи. Статус <a href="{{ route('premium') }}" class="font-bold underline">«Преміум»</a> (пожертва {{ \App\Models\Payment::priceUah() }} грн/міс або {{ \App\Models\Payment::priceUah('lifetime') }} грн назавжди) знімає ліміт.</p>
+                    @else
+                        <p class="font-bold">Ліміт перевірок на сьогодні вичерпано</p>
+                        <p>Наступна перевірка буде доступна завтра з 00:00 (за київським часом). Звіт попередньої перевірки можна завантажити на сторінці результатів, доки ви не вийдете із системи. Безліміт перевірок дає статус <a href="{{ route('premium') }}" class="font-bold underline">«Преміум»</a> за символічну пожертву: {{ \App\Models\Payment::priceUah() }} грн на місяць або {{ \App\Models\Payment::priceUah('lifetime') }} грн назавжди.</p>
+                    @endif
+                </div>
+            </div>
+        @endif
 
         <!-- Блок завантаження файлу -->
         <div class="bg-white rounded-2xl shadow-sm border border-gray-200 p-8 text-center">
@@ -16,7 +32,13 @@
                 <div class="w-16 h-16 bg-indigo-50 text-indigo-600 rounded-full flex items-center justify-center text-3xl">📄</div>
             </div>
             <h3 class="text-lg font-bold text-gray-900 mb-1">Оберіть файл для перевірки</h3>
-            <p class="text-sm text-gray-500 mb-6">Підтримуються лише файли формату .docx (Word)</p>
+            <p class="text-sm text-gray-500 mb-6">
+                Підтримуються лише файли формату .docx (Word)
+                <span class="block mt-1 font-semibold text-amber-700">⚠️ Максимальний розмір файлу — {{ $maxUploadMb }} МБ</span>
+                @unless ($isPremium)
+                    <span class="block mt-1 text-xs">Зі статусом <a href="{{ route('premium') }}" class="font-semibold text-indigo-600 hover:underline">«Преміум»</a> — до {{ \App\Http\Controllers\NormControlController::PREMIUM_MAX_UPLOAD_MB }} МБ.</span>
+                @endunless
+            </p>
 
             @if ($errors->any())
                 <div class="mb-4 p-4 bg-red-50 text-red-600 rounded-lg text-sm text-left">
@@ -28,11 +50,12 @@
                 </div>
             @endif
 
-            <form action="{{ route('norm-control.process') }}" method="POST" enctype="multipart/form-data">
+            {{-- fileName/fileSize — обраний файл; tooBig — більше за ліміт, тоді показуємо попередження й блокуємо кнопку --}}
+            <form action="{{ route('norm-control.process') }}" method="POST" enctype="multipart/form-data"
+                  x-data="{ fileName: '', fileSize: 0, maxBytes: {{ $maxUploadMb }} * 1024 * 1024, get tooBig() { return this.fileSize > this.maxBytes } }">
                 @csrf
 
-                <!-- Додаємо x-data="{ fileName: '' }" для відстеження файлу -->
-                <div x-data="{ fileName: '' }" class="flex items-center justify-center w-full mb-6">
+                <div class="flex items-center justify-center w-full mb-6">
                     <label for="dropzone-file" class="flex flex-col items-center justify-center w-full h-40 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100 transition relative overflow-hidden">
 
                         <div class="flex flex-col items-center justify-center pt-5 pb-6 w-full px-4 text-center">
@@ -46,10 +69,11 @@
                             </div>
 
                             <!-- Блок 2: Показуємо, коли файл ВЖЕ обрано -->
-                            <div x-show="fileName" style="display: none;" class="flex flex-col items-center text-indigo-600">
-                                <!-- Іконка галочки -->
-                                <svg class="w-10 h-10 mb-2 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                                <p class="text-sm font-medium text-gray-500 mb-1">Файл готовий до перевірки:</p>
+                            <div x-show="fileName" style="display: none;" class="flex flex-col items-center" :class="tooBig ? 'text-red-600' : 'text-indigo-600'">
+                                <!-- Іконка галочки (або хрестика, якщо файл завеликий) -->
+                                <svg x-show="!tooBig" class="w-10 h-10 mb-2 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                <svg x-show="tooBig" class="w-10 h-10 mb-2 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                <p class="text-sm font-medium text-gray-500 mb-1" x-text="tooBig ? 'Файл завеликий:' : 'Файл готовий до перевірки:'"></p>
                                 <!-- Назва файлу -->
                                 <p x-text="fileName" class="font-bold text-lg truncate max-w-full px-4"></p>
                             </div>
@@ -58,11 +82,23 @@
 
                         <!-- @change ловить подію вибору і записує ім'я у змінну fileName -->
                         <input id="dropzone-file" type="file" name="document" class="hidden" accept=".docx"
-                               @change="fileName = $event.target.files[0] ? $event.target.files[0].name : ''" />
+                               @change="const f = $event.target.files[0]; fileName = f ? f.name : ''; fileSize = f ? f.size : 0" />
                     </label>
                 </div>
 
-                <button type="submit" class="bg-indigo-600 text-white px-6 py-3 rounded-lg font-bold hover:bg-indigo-700 transition w-full sm:w-auto shadow-sm">
+                <!-- Попередження, якщо обраний файл більший за ліміт (перевіряємо ще до відправки) -->
+                <div x-show="tooBig" x-transition.opacity style="display: none;" class="mb-6 p-4 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm text-left">
+                    <p class="font-bold">
+                        Файл важить <span x-text="(fileSize / 1024 / 1024).toFixed(1).replace('.', ',')"></span> МБ — це більше за допустимі {{ $maxUploadMb }} МБ.
+                    </p>
+                    <p class="mt-1">Зменште розмір документа: у Word виберіть рисунок → «Формат рисунка» → «Стиснути рисунки» → «До всіх рисунків у документі», збережіть файл і завантажте знову.</p>
+                </div>
+
+                <div class="mb-6">
+                    <x-turnstile :show-error="false" />
+                </div>
+
+                <button type="submit" @disabled($remainingChecks === 0) :disabled="{{ $remainingChecks === 0 ? 'true' : 'false' }} || tooBig" class="bg-indigo-600 text-white px-6 py-3 rounded-lg font-bold hover:bg-indigo-700 transition w-full sm:w-auto shadow-sm disabled:bg-gray-300 disabled:cursor-not-allowed">
                     Почати перевірку
                 </button>
             </form>

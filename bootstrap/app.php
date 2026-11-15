@@ -11,7 +11,8 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        //
+        // monobank надсилає вебхук без CSRF-токена (захист — секрет в адресі)
+        $middleware->validateCsrfTokens(except: ['payments/monobank/*']);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //

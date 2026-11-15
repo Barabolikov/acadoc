@@ -3,7 +3,7 @@
 @section('title', 'Результати перевірки | Acadoc')
 
 @section('content')
-    <div class="max-w-4xl mx-auto px-4 py-12">
+    <div class="max-w-4xl mx-auto px-4 py-6">
 
         <!-- Кнопка назад -->
         <a href="{{ route('norm-control.index') }}" class="inline-flex items-center text-sm font-medium text-gray-500 hover:text-indigo-600 mb-6 transition">
@@ -19,8 +19,8 @@
 
             <div class="p-8">
                 <h2 class="text-lg font-bold text-gray-900 mb-4 border-b pb-2">Загальна статистика</h2>
-                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-8">
-                    <div class="flex flex-col md:flex-row justify-between gap-6">
+                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-4">
+                    <div class="flex flex-col md:flex-row justify-between gap-3">
                         <!-- Інформація про документ -->
                         <div class="space-y-2">
                             <h1 class="text-2xl font-black text-gray-900 flex items-center gap-2">
@@ -32,7 +32,7 @@
                         </div>
 
                         <!-- Учасники процесу -->
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-12 gap-y-3 bg-indigo-50 p-4 rounded-xl border border-indigo-100">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 bg-indigo-50 p-4 rounded-xl border border-indigo-100">
                             <div>
                                 <p class="text-[10px] uppercase tracking-wider text-indigo-400 font-black">Виконав студент:</p>
                                 <p class="text-sm font-bold text-indigo-900">{{ $studentName }}</p>
@@ -52,7 +52,7 @@
                     </div>
                 </div>
                 <!-- Блок зі статистикою -->
-                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
                     <div class="bg-gray-50 p-4 rounded-xl border border-gray-100 text-center">
                         <p class="text-xs text-gray-500 uppercase font-bold mb-1">Абзаців</p>
                         <p class="text-2xl font-black text-indigo-600">{{ $paragraphsCount }}</p>
@@ -88,7 +88,7 @@
                 <div class="space-y-4">
                     <div class="flex items-start gap-3">
                         <div class="mt-1">
-                            @if(in_array('Times New Roman', $fonts))
+                            @if($mainFont === 'Times New Roman')
                                 <svg class="w-6 h-6 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                             @else
                                 <svg class="w-6 h-6 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
@@ -97,16 +97,18 @@
                         <div>
                             <p class="font-bold text-gray-900">Основний шрифт</p>
                             <p class="text-sm text-gray-600">
-                                @if(in_array('Times New Roman', $fonts))
-                                    Знайдено шрифт <span class="font-semibold">Times New Roman</span>. Це відповідає стандартам ДСТУ.
+                                @if($mainFont === null)
+                                    Основний текст не знайдено (потрібен розділ «ВСТУП»), тому шрифт не визначено.
+                                @elseif($mainFont === 'Times New Roman')
+                                    Основний текст набрано шрифтом <span class="font-semibold">Times New Roman</span> ({{ $mainFontShare }}% тексту). Це відповідає вимогам.
                                 @else
-                                    <span class="text-red-600">Увага!</span> У прямих стилях не знайдено Times New Roman.
+                                    <span class="text-red-600">Увага!</span> Основний текст набрано шрифтом <span class="font-semibold">{{ $mainFont }}</span> ({{ $mainFontShare }}% тексту), треба Times New Roman.
                                 @endif
                             </p>
 
-                            <!-- Виводимо всі знайдені шрифти -->
+                            {{-- Шрифти, задані вручну: лістинги коду, рамка, формули тощо — довідково --}}
                             @if(count($fonts) > 0)
-                                <p class="text-xs text-gray-400 mt-2">Використані шрифти у файлі: {{ implode(', ', $fonts) }}</p>
+                                <p class="text-xs text-gray-400 mt-2">Інші шрифти, задані вручну (код, рамка, формули тощо): {{ implode(', ', $fonts) }}</p>
                             @endif
                         </div>
                         @if($structure['usesPronounI'])
@@ -121,10 +123,10 @@
                     </div>
                 </div>
                 <!-- Блок перевірки структури -->
-                <h2 class="text-lg font-bold text-gray-900 mt-10 mb-4 border-b pb-2">Структура документа (Послідовність розділів)</h2>
+                <h2 class="text-lg font-bold text-gray-900 mt-5 mb-4 border-b pb-2">Структура документа (Послідовність розділів)</h2>
 
                 <div class="bg-gray-50 rounded-xl p-6 border border-gray-100">
-                    <div class="relative border-l-2 border-indigo-200 ml-3 space-y-6">
+                    <div class="relative border-l-2 border-indigo-200 ml-3 space-y-3">
 
                         <!-- 1. Титулка -->
                         <div class="relative pl-6">
@@ -171,27 +173,23 @@
                         </div>
                         <!-- 5. Висновки -->
                         <div class="relative pl-6">
-                            <div class="absolute -left-[9px] top-1 w-4 h-4 rounded-full border-2 border-white {{ $structure['conclusionsIndex'] !== -1 && !$structure['hasWrongConclusionWord'] ? 'bg-green-500' : 'bg-red-500' }}"></div>
+                            <div class="absolute -left-[9px] top-1 w-4 h-4 rounded-full border-2 border-white {{ $structure['conclusionsIndex'] !== -1 ? 'bg-green-500' : 'bg-red-500' }}"></div>
                             <p class="font-bold text-gray-900">5. Висновки</p>
-                            @if($structure['hasWrongConclusionWord'])
-                                <p class="text-sm text-red-600 font-medium">Помилка: Використано слово "ВИСНОВОК" замість "ВИСНОВКИ".</p>
-                            @elseif($structure['conclusionsIndex'] !== -1)
-                                <p class="text-sm text-gray-600">Розділ знайдено. Назва коректна.</p>
+                            @if($structure['conclusionsIndex'] !== -1)
+                                <p class="text-sm text-gray-600">Розділ знайдено: «{{ $structure['conclusionsTitle'] }}».</p>
                             @else
-                                <p class="text-sm text-red-600 font-medium">Помилка: Розділ "ВИСНОВКИ" відсутній.</p>
+                                <p class="text-sm text-red-600 font-medium">Помилка: розділ «ВИСНОВКИ» («ВИСНОВОК») відсутній.</p>
                             @endif
                         </div>
 
                         <!-- 6. Список джерел -->
                         <div class="relative pl-6">
-                            <div class="absolute -left-[9px] top-1 w-4 h-4 rounded-full border-2 border-white {{ $structure['referencesIndex'] !== -1 && !$structure['hasWrongReferencesWord'] ? 'bg-green-500' : 'bg-red-500' }}"></div>
+                            <div class="absolute -left-[9px] top-1 w-4 h-4 rounded-full border-2 border-white {{ $structure['referencesIndex'] !== -1 ? 'bg-green-500' : 'bg-red-500' }}"></div>
                             <p class="font-bold text-gray-900">6. Список джерел</p>
-                            @if($structure['hasWrongReferencesWord'])
-                                <p class="text-sm text-red-600 font-medium">Помилка: Використано стару назву "СПИСОК ВИКОРИСТАНОЇ ЛІТЕРАТУРИ". Потрібно "СПИСОК ВИКОРИСТАНИХ ДЖЕРЕЛ".</p>
-                            @elseif($structure['referencesIndex'] !== -1)
-                                <p class="text-sm text-gray-600">Розділ знайдено. Назва коректна.</p>
+                            @if($structure['referencesIndex'] !== -1)
+                                <p class="text-sm text-gray-600">Розділ знайдено: «{{ $structure['referencesTitle'] }}».</p>
                             @else
-                                <p class="text-sm text-red-600 font-medium">Помилка: Розділ відсутній.</p>
+                                <p class="text-sm text-red-600 font-medium">Помилка: розділ відсутній. Допустимі назви: «СПИСОК ВИКОРИСТАНИХ ДЖЕРЕЛ», «СПИСОК ЛІТЕРАТУРИ», «ПЕРЕЛІК ДЖЕРЕЛ ПОСИЛАННЯ».</p>
                             @endif
                         </div>
 
@@ -231,11 +229,8 @@
                         </div>
                     </div>
                 </div>
-                <div class="mt-8 bg-blue-50 border border-blue-100 rounded-lg p-4 text-sm text-blue-800">
-                    <strong>ℹ️ Примітка:</strong> Наразі це базова перевірка. У майбутньому ми додамо сюди перевірку 14-го кеглю (розміру), 1.5 міжрядкового інтервалу та вирівнювання по ширині.
-                </div>
                 <!-- Журнал конкретних виправлень -->
-                <h2 class="text-lg font-bold text-gray-900 mt-10 mb-4 border-b pb-2 flex items-center gap-2">
+                <h2 class="text-lg font-bold text-gray-900 mt-5 mb-4 border-b pb-2 flex items-center gap-2">
                     <span class="text-xl">📋</span> Журнал виправлень (Що і де виправити)
                 </h2>
 
@@ -296,28 +291,66 @@
                 @endif
             </div>
         </div>
-        <div class="mt-8 flex justify-center">
-            <form action="{{ route('norm-control.download') }}" method="POST">
-                @csrf
-                <!-- Приховані поля з даними -->
-                <input type="hidden" name="fileName" value="{{ $fileName }}">
-                <input type="hidden" name="studentName" value="{{ $studentName }}">
-                <input type="hidden" name="supervisorName" value="{{ $supervisorName }}">
-                <input type="hidden" name="paragraphsCount" value="{{ $paragraphsCount }}">
-                <input type="hidden" name="charsCount" value="{{ $charsCount }}">
-                <input type="hidden" name="tablesCount" value="{{ $tablesCount }}">
-                <input type="hidden" name="imagesCount" value="{{ $imagesCount }}">
-                @foreach($actionableErrors as $index => $error)
-                    <input type="hidden" name="actionableErrors[{{ $index }}][type]" value="{{ $error['type'] }}">
-                    <input type="hidden" name="actionableErrors[{{ $index }}][message]" value="{{ $error['message'] }}">
-                    <input type="hidden" name="actionableErrors[{{ $index }}][location]" value="{{ $error['location'] }}">
-                    <input type="hidden" name="actionableErrors[{{ $index }}][context]" value="{{ $error['context'] }}">
-                @endforeach
+        <div class="mt-4 flex flex-col items-center gap-4">
+            <div class="max-w-xl w-full bg-blue-50 border border-blue-100 rounded-lg p-4 text-sm text-blue-800 text-center">
+                <strong>ℹ️ Примітка:</strong> Отриманий файл звіту слід надіслати керівнику проєкту.
+            </div>
+            <div class="flex flex-col sm:flex-row items-center gap-3">
+                <form action="{{ route('norm-control.download') }}" method="POST">
+                    @csrf
+                    {{-- Дані звіту беруться із сесії на сервері (див. NormControlController::downloadReport) --}}
 
-                <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 px-8 rounded-2xl shadow-lg transition-all flex items-center gap-3">
-                    <span>📥 Завантажити повний звіт у PDF</span>
-                </button>
-            </form>
+                    <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 px-8 rounded-2xl shadow-lg transition-all flex items-center gap-3">
+                        <span>📥 Завантажити звіт (.docx)</span>
+                    </button>
+                </form>
+
+                {{-- Автовиправлення (DocxFixer) — для статусу «Преміум» --}}
+                @if ($isPremium && $fixed)
+                    <a href="{{ route('norm-control.fixed') }}"
+                       class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-4 px-8 rounded-2xl shadow-lg transition-all flex items-center gap-3">
+                        <span>🛠️ Виправити помилки</span>
+                    </a>
+                @else
+                    <a href="{{ route('premium') }}" title="Доступно зі статусом «Преміум»"
+                       class="bg-gray-200 text-gray-500 hover:bg-gray-300 font-bold py-4 px-8 rounded-2xl flex items-center gap-3 transition">
+                        <span>🔒 Виправити помилки</span>
+                        <span class="text-xs font-bold uppercase bg-amber-400 text-amber-950 rounded px-2 py-0.5">Преміум</span>
+                    </a>
+                @endif
+            </div>
+
+            @if ($isPremium && $fixed)
+                <div class="max-w-xl w-full bg-emerald-50 border border-emerald-200 rounded-lg p-4 text-sm text-emerald-900">
+                    @if ($fixed['fixes'])
+                        <p class="font-bold mb-1">Сервіс виправив у вашій роботі:</p>
+                        <ul class="list-disc pl-5 space-y-0.5">
+                            @foreach ($fixed['fixes'] as $op => $count)
+                                <li>{{ \App\Services\NormControl\DocxFixer::LABELS[$op] ?? $op }} — {{ $count }}</li>
+                            @endforeach
+                        </ul>
+                    @else
+                        <p class="font-bold">Помилок, які можна виправити автоматично, не знайдено.</p>
+                    @endif
+                    @if ($fixed['manual'] > 0)
+                        <p class="mt-2">Ще {{ $fixed['manual'] }} зауважень (посилання, підписи, рамка, зміст тощо) потрібно виправити вручну — див. звіт.</p>
+                    @endif
+                    <p class="mt-2 text-xs text-emerald-700">
+                        <a href="{{ route('norm-control.fixed') }}" class="font-bold underline">Завантажити виправлену роботу</a>.
+                        Посилання діє 24 години. Перегляньте файл перед здачею та оновіть зміст (ПКМ → Оновити поле).
+                    </p>
+                </div>
+            @elseif ($isPremium)
+                <div class="max-w-xl w-full bg-red-50 border border-red-200 rounded-lg p-4 text-sm text-red-800 text-center">
+                    Не вдалося автоматично виправити цей документ. Виправте помилки вручну за звітом.
+                </div>
+            @else
+                <div class="max-w-xl w-full bg-amber-50 border border-amber-200 rounded-lg p-4 text-sm text-amber-900 text-center">
+                    Сервіс може сам виправити шрифт, інтервали, відступи, поля й заголовки та дати посилання на виправлену роботу. Статус «Преміум» також знімає денний ліміт перевірок.
+                    Статус «Преміум» можна отримати за символічну пожертву на розвиток проєкту: {{ \App\Models\Payment::priceUah() }} грн на місяць або {{ \App\Models\Payment::priceUah('lifetime') }} грн назавжди.
+                    <a href="{{ route('premium') }}" class="mt-2 block w-fit mx-auto bg-amber-500 hover:bg-amber-600 text-white font-bold py-2 px-5 rounded-lg transition">⭐ Отримати «Преміум» від {{ \App\Models\Payment::priceUah() }} грн</a>
+                </div>
+            @endif
         </div>
     </div>
 @endsection

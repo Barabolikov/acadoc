@@ -2,7 +2,9 @@
 
 namespace App\Providers\Filament;
 
+use App\Filament\Auth\Login;
 use Filament\Http\Middleware\Authenticate;
+use Filament\View\PanelsRenderHook;
 use BezhanSalleh\FilamentShield\FilamentShieldPlugin;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
@@ -28,7 +30,14 @@ class AdminPanelProvider extends PanelProvider
             ->default()
             ->id('admin')
             ->path('admin')
-            ->login()
+            ->login(Login::class)
+            // Скрипт капчі Turnstile для сторінки входу
+            ->renderHook(
+                PanelsRenderHook::HEAD_END,
+                fn (): string => request()->routeIs('filament.admin.auth.login')
+                    ? '<script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" async defer></script>'
+                    : '',
+            )
             ->colors([
                 'primary' => Color::Amber,
             ])
